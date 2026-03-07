@@ -1,0 +1,19 @@
+# firmware
+firmware/secrets
+firmware/build
+firmware/output
+
+# secrets
+global.secrets
+group_ids.txt
+perms_hsm*.txt
+pin_hsm*.txt
+
+# root
+.venv/
+.gdb*
+.clangd
+pyrightconfig.json
+
+# documentation
+docs/html
