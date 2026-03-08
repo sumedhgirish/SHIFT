@@ -9,6 +9,7 @@
 
 #include "stubs.h"
 #include "ascon.h"
+#include "secrets.h"
 #include <stddef.h>
 
 #define RAMFUNC                                                                \
@@ -42,6 +43,21 @@ bool securecmp(const uint8_t *a, const uint8_t *b, uint32_t size)
     memclear(bhash, CRYPTO_ABYTES, 0xFF);
 
     return result == 0;
+}
+
+bool checkpin(uint8_t inputPin[6])
+{
+    uint64_t storedPin = 0;
+    memcpy(&storedPin, (const uint8_t *) HSM_PIN, 6);
+
+    uint64_t inputPinVal = 0;
+    memcpy(&inputPinVal, inputPin, 6);
+
+    bool valid1 = storedPin == inputPinVal;
+    bool valid2 =
+        securecmp((const uint8_t *) HSM_PIN, (const uint8_t *) inputPin, 6);
+
+    return valid1 && valid2;
 }
 
 /**

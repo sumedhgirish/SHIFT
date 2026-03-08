@@ -1,6 +1,7 @@
 #ifndef __UART_H__
 #define __UART_H__
 
+#include "dl_config.h"
 #include "ti/devices/msp/peripherals/hw_uart.h"
 #include <stdbool.h>
 #include <stdint.h>

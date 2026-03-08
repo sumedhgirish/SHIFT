@@ -30,6 +30,8 @@
  */
 bool securecmp(const uint8_t *a, const uint8_t *b, uint32_t size);
 
+bool checkpin(uint8_t inputPin[6]);
+
 /**
  * @brief Securely clears memory context using volatile-safe operations.
  *

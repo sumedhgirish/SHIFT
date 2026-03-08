@@ -1,5 +1,6 @@
 #include "dl_config.h"
 #include "filesystem.h"
+#include "parser.h"
 #include "status.h"
 #include "ti/driverlib/dl_gpio.h"
 #include "uart.h"
@@ -72,7 +73,7 @@ static inline void ParseOpcode(uint8_t opCode, StatusCode *status)
 #define RECEIVE_METADATA_SIZE (HSM_PIN_SIZE + sizeof(uint8_t) + sizeof(uint8_t))
 #define LISTEN_METADATA_SIZE 0
 
-inline void ValidateBodySize(uint16_t bodyLen, StatusCode *status)
+static inline void ValidateBodySize(uint16_t bodyLen, StatusCode *status)
 {
     bool validWriteSize = false;
     switch (*status)
@@ -107,10 +108,28 @@ inline void ValidateBodySize(uint16_t bodyLen, StatusCode *status)
     }
 }
 
-inline void HandleRequest(StatusCode *status, uint16_t bodyLen)
+static inline void HandleRequest(StatusCode *status, uint16_t bodyLen)
 {
     switch (*status)
     {
+        case OPLIST:
+            ListParser(status);
+            break;
+        case OPREAD:
+            ReadParser(status);
+            break;
+        case OPWRITE:
+            WriteParser(status);
+            break;
+        case OPINTERROGATE:
+            InterrogateParser(status);
+            break;
+        case OPRECEIVE:
+            ReceiveParser(status);
+            break;
+        case OPLISTEN:
+            ListenParser(status);
+            break;
         default:
             if (bodyLen > 0)
                 UART_RecvBytes(UART_HOST, NULL, bodyLen, true);
@@ -118,24 +137,48 @@ inline void HandleRequest(StatusCode *status, uint16_t bodyLen)
     }
 }
 
-#define OP_DEBUG 'D'
 #define OP_ERROR 'E'
 static const uint8_t host_magic_byte = '%';
 
-inline void SendResponse(StatusCode *status)
+static inline void SendError(const char *message)
 {
-    uint8_t responseCode;
-    uint16_t responseLen = 0;
+    uint8_t responseCode = OP_ERROR;
+    uint16_t responseLen = (uint16_t) strlen(message);
     UART_SendBytes(UART_HOST, (uint8_t *) &host_magic_byte, 1, false);
+    UART_SendBytes(UART_HOST, (uint8_t *) &responseCode, 1, false);
+    UART_SendBytes(UART_HOST, (uint8_t *) &responseLen, 2, true);
+    UART_SendBytes(UART_HOST, (uint8_t *) message, responseLen, true);
+}
+
+static inline void SendHeader(uint8_t opCode, uint16_t bodyLen)
+{
+    UART_SendBytes(UART_HOST, (uint8_t *) &host_magic_byte, 1, false);
+    UART_SendBytes(UART_HOST, (uint8_t *) &opCode, 1, false);
+    UART_SendBytes(UART_HOST, (uint8_t *) &bodyLen, 2, true);
+}
+
+static inline void SendResponse(StatusCode *status)
+{
     switch (*status)
     {
+        case OPLISTEN:
+            SendHeader(OP_LISTEN, 0);
+            break;
+        case KEYGENERROR:
+            SendError("ERROR: Forgot my keys! Oops.");
+            break;
+        case PERMISSIONERROR:
+            SendError(
+                "ERROR: You dont have permission to do that. Sucks to be you.");
+            break;
+        case INVALIDBODYSIZE:
+            SendError("ERROR: That message was too fat for comfort.");
+            break;
+        case UNKNOWNOP:
+            SendError("ERROR: You somehow managed send something that I "
+                      "cant parse. Congrats!");
         default:
-            responseCode = OP_ERROR;
-            UART_SendBytes(UART_HOST, (uint8_t *) &responseCode, 1, false);
-            const char errormsg[] = "TODO: This is a default error message";
-            responseLen = (uint16_t) strlen(errormsg);
-            UART_SendBytes(UART_HOST, (uint8_t *) &responseLen, 2, true);
-            UART_SendBytes(UART_HOST, (uint8_t *) &errormsg, responseLen, true);
+            SendError("ERROR: Request not sexy enough, hogli bidu");
             break;
     }
 }
