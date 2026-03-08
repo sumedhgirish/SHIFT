@@ -81,12 +81,12 @@ class TestTimingSpecs:
         )
 
     def test_interrogate_timing(
-        self, hsm_a: HSMIntf, hsm_b: HSMIntf, pin_a: str
+        self, hsm_a: HSMIntf, hsm_b: HSMIntf, pin_b: str
     ) -> None:
         hsm_a.listen()
 
         start = time.time()
-        _ = hsm_b.interrogate(pin_a)
+        _ = hsm_b.interrogate(pin_b)
         duration = time.time() - start
 
         assert duration <= MAX_TIME_INTERROGATE, (
@@ -110,7 +110,7 @@ class TestTimingSpecs:
         hsm_b.listen()
 
         # Must interrogate first per normal protocol flow usually
-        _ = hsm_a.interrogate(pin_b)
+        _ = hsm_a.interrogate(pin_a)
 
         hsm_b.listen()
         recv_f = setup_receive_frame(pin_a, 1, 1)
