@@ -88,7 +88,7 @@ class TestRunTests:
         self, hsm_a: HSMIntf, hsm_b: HSMIntf, pin_a: str, pin_b: str
     ) -> None:
         hsm_a.listen()
-        files_a = hsm_b.interrogate(pin_a)
+        files_a = hsm_b.interrogate(pin_b)
         assert len(files_a) > 0
 
         hsm_a.listen()

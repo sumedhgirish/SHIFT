@@ -16,6 +16,7 @@ typedef enum
     // Exceptions
     UNKNOWNOP,
     INVALIDBODYSIZE,
+    INVALIDSLOT,
     PERMISSIONERROR,
     KEYGENERROR,
 } StatusCode;

@@ -164,6 +164,9 @@ static inline void SendResponse(StatusCode *status)
         case OPLISTEN:
             SendHeader(OP_LISTEN, 0);
             break;
+        case INVALIDSLOT:
+            SendError("ERROR: I have 8 slots. That ain't one of 'em.");
+            break;
         case KEYGENERROR:
             SendError("ERROR: Forgot my keys! Oops.");
             break;
