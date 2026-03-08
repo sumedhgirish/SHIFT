@@ -69,7 +69,7 @@ static inline void WaitForHostACK(void)
     uint8_t currentByte;
     while (idx < 4)
     {
-        currentByte = UART_PopByte(UART_PEER);
+        currentByte = UART_PopByte(UART_HOST);
         if (currentByte == ackbytes[idx])
             idx++;
         else if (currentByte == ackbytes[0])
@@ -131,7 +131,15 @@ void UART_RecvBytes(UART_Regs *channel, uint8_t *out, uint32_t length, bool eof)
             source->rx.dirty = false;
             sendACK();
         }
-        out[bytesRead++] = UART_PopByte(channel);
+
+        if (out != NULL)
+            out[bytesRead++] = UART_PopByte(channel);
+        else
+        {
+            UART_PopByte(channel);
+            bytesRead++;
+        }
+
         source->rx.progress++;
     }
 

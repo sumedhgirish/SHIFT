@@ -11,8 +11,11 @@ typedef enum
     OPRECEIVE,
     OPINTERROGATE,
     OPREPLY,
+    OPLISTEN,
 
     // Exceptions
+    UNKNOWNOP,
+    INVALIDBODYSIZE,
     PERMISSIONERROR,
     KEYGENERROR,
 } StatusCode;
