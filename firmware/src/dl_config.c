@@ -12,6 +12,7 @@
 #include "ti/devices/msp/m0p/mspm0l222x.h"
 #include "ti/driverlib/dl_gpio.h"
 #include "ti/driverlib/dl_trng.h"
+#include "ti/driverlib/dl_uart.h"
 
 /**
  * @brief Main Entrypoint for DriverLib Configuration.
@@ -103,18 +104,18 @@ SYSCONFIG_WEAK void SYSCFG_DL_SYSCTL_init(void)
 }
 
 /** @brief Clock configuration for UART 0. */
-static const DL_UART_Main_ClockConfig gUART_0ClockConfig = {
-    .clockSel = DL_UART_MAIN_CLOCK_BUSCLK,
-    .divideRatio = DL_UART_MAIN_CLOCK_DIVIDE_RATIO_1};
+static const DL_UART_ClockConfig gUART_0ClockConfig = {
+    .clockSel = DL_UART_CLOCK_BUSCLK,
+    .divideRatio = DL_UART_CLOCK_DIVIDE_RATIO_1};
 
 /** @brief Protocol configuration for UART 0 (8N1). */
-static const DL_UART_Main_Config gUART_0Config = {
-    .mode = DL_UART_MAIN_MODE_NORMAL,
-    .direction = DL_UART_MAIN_DIRECTION_TX_RX,
-    .flowControl = DL_UART_MAIN_FLOW_CONTROL_NONE,
-    .parity = DL_UART_MAIN_PARITY_NONE,
-    .wordLength = DL_UART_MAIN_WORD_LENGTH_8_BITS,
-    .stopBits = DL_UART_MAIN_STOP_BITS_ONE};
+static const DL_UART_Config gUART_0Config = {
+    .mode = DL_UART_MODE_NORMAL,
+    .direction = DL_UART_DIRECTION_TX_RX,
+    .flowControl = DL_UART_FLOW_CONTROL_NONE,
+    .parity = DL_UART_PARITY_NONE,
+    .wordLength = DL_UART_WORD_LENGTH_8_BITS,
+    .stopBits = DL_UART_STOP_BITS_ONE};
 
 /**
  * @brief Initialize UART 0 (The Host Interface).
@@ -123,35 +124,46 @@ static const DL_UART_Main_Config gUART_0Config = {
  */
 SYSCONFIG_WEAK void SYSCFG_DL_UART_0_init(void)
 {
-    DL_UART_Main_setClockConfig(
-        UART_0_INST, (DL_UART_Main_ClockConfig *) &gUART_0ClockConfig);
+    DL_UART_setClockConfig(UART_0_INST,
+                           (DL_UART_ClockConfig *) &gUART_0ClockConfig);
 
-    DL_UART_Main_init(UART_0_INST, (DL_UART_Main_Config *) &gUART_0Config);
+    DL_UART_init(UART_0_INST, (DL_UART_Config *) &gUART_0Config);
     /*
      * Configure baud rate by setting oversampling and baud rate divisors.
      *  Target baud rate: 115200
      *  Actual baud rate: 115211.52
      */
-    DL_UART_Main_setOversampling(UART_0_INST, DL_UART_OVERSAMPLING_RATE_16X);
-    DL_UART_Main_setBaudRateDivisor(UART_0_INST, UART_0_IBRD_32_MHZ_115200_BAUD,
-                                    UART_0_FBRD_32_MHZ_115200_BAUD);
+    DL_UART_setOversampling(UART_0_INST, DL_UART_OVERSAMPLING_RATE_16X);
+    DL_UART_setBaudRateDivisor(UART_0_INST, UART_0_IBRD_32_MHZ_115200_BAUD,
+                               UART_0_FBRD_32_MHZ_115200_BAUD);
 
-    DL_UART_Main_enable(UART_0_INST);
+    DL_UART_enableFIFOs(UART_0_INST);
+    DL_UART_setRXFIFOThreshold(UART_0_INST, DL_UART_RX_FIFO_LEVEL_ONE_ENTRY);
+
+    DL_UART_setRXInterruptTimeout(UART_0_INST, 10);
+
+    DL_UART_enableInterrupt(
+        UART_0_INST, DL_UART_INTERRUPT_RX | DL_UART_INTERRUPT_RX_TIMEOUT_ERROR |
+                         DL_UART_INTERRUPT_OVERRUN_ERROR);
+
+    DL_UART_enable(UART_0_INST);
+
+    NVIC_EnableIRQ(UART_0_INST_INT_IRQN);
 }
 
 /** @brief Clock configuration for UART 1. */
-static const DL_UART_Main_ClockConfig gUART_1ClockConfig = {
-    .clockSel = DL_UART_MAIN_CLOCK_BUSCLK,
-    .divideRatio = DL_UART_MAIN_CLOCK_DIVIDE_RATIO_1};
+static const DL_UART_ClockConfig gUART_1ClockConfig = {
+    .clockSel = DL_UART_CLOCK_BUSCLK,
+    .divideRatio = DL_UART_CLOCK_DIVIDE_RATIO_1};
 
 /** @brief Protocol configuration for UART 1 (8N1). */
-static const DL_UART_Main_Config gUART_1Config = {
-    .mode = DL_UART_MAIN_MODE_NORMAL,
-    .direction = DL_UART_MAIN_DIRECTION_TX_RX,
-    .flowControl = DL_UART_MAIN_FLOW_CONTROL_NONE,
-    .parity = DL_UART_MAIN_PARITY_NONE,
-    .wordLength = DL_UART_MAIN_WORD_LENGTH_8_BITS,
-    .stopBits = DL_UART_MAIN_STOP_BITS_ONE};
+static const DL_UART_Config gUART_1Config = {
+    .mode = DL_UART_MODE_NORMAL,
+    .direction = DL_UART_DIRECTION_TX_RX,
+    .flowControl = DL_UART_FLOW_CONTROL_NONE,
+    .parity = DL_UART_PARITY_NONE,
+    .wordLength = DL_UART_WORD_LENGTH_8_BITS,
+    .stopBits = DL_UART_STOP_BITS_ONE};
 
 /**
  * @brief Initialize UART 1 (The Engineering/Peer Interface).
@@ -160,20 +172,31 @@ static const DL_UART_Main_Config gUART_1Config = {
  */
 SYSCONFIG_WEAK void SYSCFG_DL_UART_1_init(void)
 {
-    DL_UART_Main_setClockConfig(
-        UART_1_INST, (DL_UART_Main_ClockConfig *) &gUART_1ClockConfig);
+    DL_UART_setClockConfig(UART_1_INST,
+                           (DL_UART_ClockConfig *) &gUART_1ClockConfig);
 
-    DL_UART_Main_init(UART_1_INST, (DL_UART_Main_Config *) &gUART_1Config);
+    DL_UART_init(UART_1_INST, (DL_UART_Config *) &gUART_1Config);
     /*
      * Configure baud rate by setting oversampling and baud rate divisors.
      *  Target baud rate: 115200
      *  Actual baud rate: 115211.52
      */
-    DL_UART_Main_setOversampling(UART_1_INST, DL_UART_OVERSAMPLING_RATE_16X);
-    DL_UART_Main_setBaudRateDivisor(UART_1_INST, UART_1_IBRD_32_MHZ_115200_BAUD,
-                                    UART_1_FBRD_32_MHZ_115200_BAUD);
+    DL_UART_setOversampling(UART_1_INST, DL_UART_OVERSAMPLING_RATE_16X);
+    DL_UART_setBaudRateDivisor(UART_1_INST, UART_1_IBRD_32_MHZ_115200_BAUD,
+                               UART_1_FBRD_32_MHZ_115200_BAUD);
 
-    DL_UART_Main_enable(UART_1_INST);
+    DL_UART_enableFIFOs(UART_1_INST);
+    DL_UART_setRXFIFOThreshold(UART_1_INST, DL_UART_RX_FIFO_LEVEL_ONE_ENTRY);
+
+    DL_UART_setRXInterruptTimeout(UART_1_INST, 10);
+
+    DL_UART_enableInterrupt(
+        UART_1_INST, DL_UART_INTERRUPT_RX | DL_UART_INTERRUPT_RX_TIMEOUT_ERROR |
+                         DL_UART_INTERRUPT_OVERRUN_ERROR);
+
+    DL_UART_enable(UART_1_INST);
+
+    NVIC_EnableIRQ(UART_1_INST_INT_IRQN);
 }
 
 /**
