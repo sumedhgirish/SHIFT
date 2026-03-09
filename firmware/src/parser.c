@@ -4,6 +4,7 @@
 #include "secrets.h"
 #include "stubs.h"
 #include "uart.h"
+#include <assert.h>
 #include <string.h>
 
 void ListParser(StatusCode *status)
@@ -16,6 +17,25 @@ void ListParser(StatusCode *status)
         *status = PERMISSIONERROR;
         return;
     }
+
+    uint32_t numEntries = 0;
+    for (uint8_t i = 0; i < NUM_SLOTS; i++)
+    {
+        if (Metadata_Table[i].status.magic == 0xdeadf00d &&
+            securecmp((uint8_t *) Metadata_Table[i].status.id,
+                      (uint8_t *) FAT_Table.entry[i].uuid, 16) == true)
+        {
+            stage.as.fat.slots[numEntries].groupid =
+                Metadata_Table[i].data.groupid;
+            stage.as.fat.slots[numEntries].slot = i;
+            memcpy((uint8_t *) stage.as.fat.slots[numEntries].filename,
+                   (uint8_t *) Metadata_Table[i].data.filename, 32);
+
+            numEntries++;
+        }
+    }
+
+    stage.as.fat.numEntries = numEntries;
 }
 
 void ReadParser(StatusCode *status)
@@ -37,6 +57,8 @@ void ReadParser(StatusCode *status)
         *status = INVALIDSLOT;
         return;
     }
+
+    LoadFile(readSlot, status);
 }
 
 void WriteParser(StatusCode *status)
@@ -86,6 +108,8 @@ void WriteParser(StatusCode *status)
 
     UART_RecvBytes(UART_HOST, (uint8_t *) stage.as.file.content, filesize,
                    true);
+
+    StoreFile(writeSlot, status);
 }
 
 void InterrogateParser(StatusCode *status)

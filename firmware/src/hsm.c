@@ -2,6 +2,7 @@
 #include "filesystem.h"
 #include "parser.h"
 #include "status.h"
+#include "stubs.h"
 #include "ti/driverlib/dl_gpio.h"
 #include "uart.h"
 #include <assert.h>
@@ -161,14 +162,41 @@ static inline void SendResponse(StatusCode *status)
 {
     switch (*status)
     {
-        case OPLISTEN:
-            SendHeader(OP_LISTEN, 0);
+        case OPLIST:
+            SendHeader(OP_LIST,
+                       (uint16_t) (stage.as.fat.numEntries * sizeof(FS_Slot) +
+                                   sizeof(uint32_t)));
+            UART_SendBytes(UART_HOST, (uint8_t *) &stage.as.fat.numEntries,
+                           sizeof(uint32_t), false);
+            UART_SendBytes(UART_HOST, (uint8_t *) stage.as.fat.slots,
+                           (stage.as.fat.numEntries * sizeof(FS_Slot)), true);
+            break;
+        case OPREAD:
+            SendHeader(OP_READ, stage.as.file.entry.filesize + 32);
+            UART_SendBytes(UART_HOST,
+                           (uint8_t *) stage.as.file.metadata.filename, 32,
+                           false);
+            UART_SendBytes(UART_HOST, (uint8_t *) stage.as.file.content,
+                           stage.as.file.entry.filesize, true);
+            break;
+        case OPWRITE:
+            SendHeader(OP_WRITE, 0);
+            break;
+        case FLASHWRITEERROR:
+            SendError("ERROR: Damn, I couldn't commit that to memory.");
+            break;
+        case FLASHERASEERROR:
+            SendError("ERROR: Damn, I can't forget that now that I know it.");
             break;
         case INVALIDSLOT:
-            SendError("ERROR: I have 8 slots. That ain't one of 'em.");
+            SendError("ERROR: That slot ain't flying.");
+            break;
+        case SLOTEMPTY:
+            SendError(
+                "ERROR: I can't read an empty slot. What did you expect?");
             break;
         case KEYGENERROR:
-            SendError("ERROR: Forgot my keys! Oops.");
+            SendError("ERROR: Misplaced my keys! Oops.");
             break;
         case PERMISSIONERROR:
             SendError(
@@ -195,6 +223,7 @@ int main(void)
 
     while (true)
     {
+        memclear((uint8_t *) &stage, sizeof(FS_Stage), 0);
         status = UNKNOWNOP;
         while (status == UNKNOWNOP)
         {

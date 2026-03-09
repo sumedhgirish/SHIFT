@@ -101,15 +101,12 @@ class TestTimingSpecs:
         pin_b: str,
         group_ids: list[int],
     ) -> None:
-        # Prepopulate data on B
-        # groups[4]: A=--C (receive-only), B=RWC (can write)
         hsm_b.write_file(
             setup_write_frame(pin_b, 1, group_ids[4], "timing_recv", os.urandom(8192))
         )
 
         hsm_b.listen()
 
-        # Must interrogate first per normal protocol flow usually
         _ = hsm_a.interrogate(pin_a)
 
         hsm_b.listen()
@@ -124,8 +121,6 @@ class TestTimingSpecs:
         )
 
     def test_bad_pin_timing(self, hsm_a: HSMIntf) -> None:
-        # Any operation where an invalid PIN is provided should take at most 5 seconds.
-        # This usually means the timeout on the firmware side might be up to exactly 5s.
         start = time.time()
         try:
             _ = hsm_a.list("deadff")

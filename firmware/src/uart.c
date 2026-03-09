@@ -25,7 +25,8 @@ static inline void UART_TransmitAll(UART_Regs *channel)
             WaitForAck();
             buffer->progress = 0;
         }
-        DL_UART_transmitDataBlocking(channel, buffer->data[buffer->tail++]);
+        DL_UART_transmitDataBlocking(channel, buffer->data[buffer->tail]);
+        buffer->tail = (buffer->tail + 1) % UART_BUFFER_SIZE;
         buffer->count--;
         buffer->progress++;
     }
@@ -115,6 +116,12 @@ void UART_RecvUntil(UART_Regs *channel, uint8_t chr)
 {
     while (UART_PopByte(channel) != chr)
         ;
+
+    volatile UART_RingBuffer *buffer =
+        (channel == UART_HOST) ? &host.rx : &peer.rx;
+
+    buffer->progress = 0;
+    buffer->dirty = false;
 }
 
 void UART_RecvBytes(UART_Regs *channel, uint8_t *out, uint32_t length, bool eof)

@@ -19,6 +19,9 @@ typedef enum
     INVALIDSLOT,
     PERMISSIONERROR,
     KEYGENERROR,
+    SLOTEMPTY,
+    FLASHERASEERROR,
+    FLASHWRITEERROR,
 } StatusCode;
 
 #endif

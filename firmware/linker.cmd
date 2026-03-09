@@ -64,9 +64,10 @@ SECTIONS
     .stack  :   > SRAM_DATA (HIGH)
 
     /* Flash data sections (persistent, no boot initialization) */
-    .system_conf : (NOLOAD) palign(8) {} > SYSTEMCONF
+    .systemconf : (NOLOAD) palign(8) {} > SYSTEMCONF
     .metadata    : (NOLOAD) palign(8) {} > METADATA
-    .file_data   : (NOLOAD) palign(8) {} > FILEDATA
+    .filedata   : (NOLOAD) palign(8) {} > FILEDATA
+    .fat         : (NOLOAD) palign(8) {} > FAT
 
     .BCRConfig : {} > BCR_CONFIG
     .BSLConfig : {} > BSL_CONFIG

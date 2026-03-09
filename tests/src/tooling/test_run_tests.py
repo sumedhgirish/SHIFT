@@ -112,7 +112,7 @@ class TestRunTests:
         hsm_b.write_file(frame_b)
 
         hsm_b.listen()
-        files_b = hsm_a.interrogate(pin_b)
+        files_b = hsm_a.interrogate(pin_a)
         assert len(files_b) > 0
 
         hsm_b.listen()
@@ -121,7 +121,7 @@ class TestRunTests:
         assert hsm_a.read_file(setup_read_frame(pin_a, 2))[32:] == b_data
 
         hsm_a.listen()
-        files_a = hsm_b.interrogate(pin_a)
+        files_a = hsm_b.interrogate(pin_b)
         assert len(files_a) > 0
 
         hsm_a.listen()
