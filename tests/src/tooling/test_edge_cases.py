@@ -90,67 +90,37 @@ class TestEdgeCases:
             # f is (slot, group, name)
             if f[0] == 1:
                 found = True
-                assert f[2] == "hid".ljust(32, "\x00")
+                assert f[2] == "hid".ljust(32, "\x00").encode()
         assert found
 
-    # def test_length_mismatch_too_short(
-    #     self, hsm_a: HSMIntf, pin_a: str, group_ids: list[int]
-    # ) -> None:
-    #     # Frame says length is 1000, but we only supply 10 bytes
-    #     data = b"1234567890"
-    #     uuid = os.urandom(16)
-    #     name = b"mismatch".ljust(32, b"\x00")
-    #
-    #     # The struct pack formats the actual length provided, so we manually build the bad struct
-    #     pin_bytes = pin_a.encode("utf-8")[:6].ljust(6, b"\x00")
-    #     # groups[2]: A=-W- (minimum for write attempt)
-    #     frame = struct.pack(
-    #         f"<6s B H 32s 16s H {len(data)}s",
-    #         pin_bytes,
-    #         2,
-    #         group_ids[2],
-    #         name,
-    #         uuid,
-    #         1000,
-    #         data,
-    #     )
-    #
-    #     with pytest.raises(Exception):
-    #         # This will probably timeout or throw an HSMError because the firmware
-    #         # waits for 1000 bytes that will never arrive.
-    #         hsm_a.write_file(frame)
-    #
-    #     # The device must not freeze indefinitely.
-    #     assert isinstance(hsm_a.list(pin_a), list)
+    def test_length_mismatch_too_long(
+        self, hsm_a: HSMIntf, pin_a: str, group_ids: list[int]
+    ) -> None:
+        # Frame says length is 5, but we supply 500 bytes (trailing garbage)
+        data = b"A" * 500
+        uuid = os.urandom(16)
+        name = b"trailing_garbage".ljust(32, b"\x00")
 
-    # def test_length_mismatch_too_long(
-    #     self, hsm_a: HSMIntf, pin_a: str, group_ids: list[int]
-    # ) -> None:
-    #     # Frame says length is 5, but we supply 500 bytes (trailing garbage)
-    #     data = b"A" * 500
-    #     uuid = os.urandom(16)
-    #     name = b"trailing_garbage".ljust(32, b"\x00")
-    #
-    #     pin_bytes = pin_a.encode("utf-8")[:6].ljust(6, b"\x00")
-    #     # groups[2]: A=-W- (minimum for write attempt)
-    #     frame = struct.pack(
-    #         f"<6s B H 32s 16s H {len(data)}s",
-    #         pin_bytes,
-    #         3,
-    #         group_ids[2],
-    #         name,
-    #         uuid,
-    #         5,
-    #         data,
-    #     )
-    #
-    #     try:
-    #         hsm_a.write_file(frame)
-    #     except HSMError:
-    #         pass
-    #
-    #     # Verify it didn't crash from reading past the frame or corrupt its UART state
-    #     assert isinstance(hsm_a.list(pin_a), list)
+        pin_bytes = pin_a.encode("utf-8")[:6].ljust(6, b"\x00")
+        # groups[2]: A=-W- (minimum for write attempt)
+        frame = struct.pack(
+            f"<6s B H 32s 16s H {len(data)}s",
+            pin_bytes,
+            3,
+            group_ids[2],
+            name,
+            uuid,
+            5,
+            data,
+        )
+
+        try:
+            hsm_a.write_file(frame)
+        except HSMError:
+            pass
+
+        # Verify it didn't crash from reading past the frame or corrupt its UART state
+        assert isinstance(hsm_a.list(pin_a), list)
 
     def test_invalid_group_id(self, hsm_a: HSMIntf, pin_a: str) -> None:
         # Rules specify 1-65535 for Group IDs. What if we use 0?

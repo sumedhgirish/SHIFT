@@ -171,6 +171,15 @@ static inline void SendResponse(StatusCode *status)
             UART_SendBytes(UART_HOST, (uint8_t *) stage.as.fat.slots,
                            (stage.as.fat.numEntries * sizeof(FS_Slot)), true);
             break;
+        case OPINTERROGATE:
+            SendHeader(OP_INTERROGATE,
+                       (uint16_t) (stage.as.fat.numEntries * sizeof(FS_Slot) +
+                                   sizeof(uint32_t)));
+            UART_SendBytes(UART_HOST, (uint8_t *) &stage.as.fat.numEntries,
+                           sizeof(uint32_t), false);
+            UART_SendBytes(UART_HOST, (uint8_t *) stage.as.fat.slots,
+                           (stage.as.fat.numEntries * sizeof(FS_Slot)), true);
+            break;
         case OPREAD:
             SendHeader(OP_READ, stage.as.file.entry.filesize + 32);
             UART_SendBytes(UART_HOST,
@@ -181,6 +190,11 @@ static inline void SendResponse(StatusCode *status)
             break;
         case OPWRITE:
             SendHeader(OP_WRITE, 0);
+            break;
+        case OPREPLY:
+        case OPSEND:
+        case OPLISTEN:
+            SendHeader(OP_LISTEN, 0);
             break;
         case FLASHWRITEERROR:
             SendError("ERROR: Damn, I couldn't commit that to memory.");
