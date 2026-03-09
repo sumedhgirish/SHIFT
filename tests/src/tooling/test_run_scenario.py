@@ -3,6 +3,7 @@ import os
 import struct
 import tempfile
 import threading
+import time
 
 import pytest
 from ectf.tools.hsm_interface import HSMIntf
@@ -71,27 +72,38 @@ class TestRunScenarioTests:
             setup_write_frame(pin_b, 1, group_ids[7], "design2", design_file_2)
         )
 
-        # Litho interrogates & receives design_file1 from engineer
-        hsm_a.listen()
+        t1 = threading.Thread(target=hsm_a.listen)
+        t1.start()
+        time.sleep(0.1)
         _ = hsm_b.interrogate(pin_b)
+        t1.join()
 
-        hsm_a.listen()
-        recv_f1 = setup_receive_frame(pin_b, 1, 1)  # read slot 1, write slot 1
+        t2 = threading.Thread(target=hsm_a.listen)
+        t2.start()
+        time.sleep(0.1)
+        recv_f1 = setup_receive_frame(pin_b, 1, 2)  # read slot 1, write slot 2
         _ = hsm_b.receive(recv_f1)
+        t2.join()
 
         # Verify receipt by reading from Litho
-        read_f1 = setup_read_frame(pin_b, 1)
+        read_f1 = setup_read_frame(pin_b, 2)
         assert hsm_b.read_file(read_f1)[32:] == design_file_1
 
         # Engineer interrogates & receives design_file2 from litho
-        hsm_b.listen()
+        t3 = threading.Thread(target=hsm_b.listen)
+        t3.start()
+        time.sleep(0.1)
         _ = hsm_a.interrogate(pin_a)
+        t3.join()
 
-        hsm_b.listen()
-        recv_f2 = setup_receive_frame(pin_a, 1, 1)  # read slot 1, write slot 1
+        t4 = threading.Thread(target=hsm_b.listen)
+        t4.start()
+        time.sleep(0.1)
+        recv_f2 = setup_receive_frame(pin_a, 1, 2)  # read slot 1, write slot 2
         _ = hsm_a.receive(recv_f2)
+        t4.join()
 
-        read_f2 = setup_read_frame(pin_a, 1)
+        read_f2 = setup_read_frame(pin_a, 2)
         assert hsm_a.read_file(read_f2)[32:] == design_file_2
 
     def test_create_file_engineer(
@@ -118,12 +130,18 @@ class TestRunScenarioTests:
         read_f = setup_read_frame(pin_a, 2)
         assert hsm_a.read_file(read_f)[32:] == data
 
-        hsm_a.listen()
+        t1 = threading.Thread(target=hsm_a.listen)
+        t1.start()
+        time.sleep(0.1)
         _ = hsm_b.interrogate(pin_b)
+        t1.join()
 
-        hsm_a.listen()
+        t2 = threading.Thread(target=hsm_a.listen)
+        t2.start()
+        time.sleep(0.1)
         recv_f = setup_receive_frame(pin_b, 2, 2)
         _ = hsm_b.receive(recv_f)
+        t2.join()
 
         read_fb = setup_read_frame(pin_b, 2)
         assert hsm_b.read_file(read_fb)[32:] == data
@@ -152,12 +170,18 @@ class TestRunScenarioTests:
         )
 
         # Litho gets calibration from attacker
-        hsm_a.listen()
+        t1 = threading.Thread(target=hsm_a.listen)
+        t1.start()
+        time.sleep(0.1)
         _ = hsm_b.interrogate(pin_b)
+        t1.join()
 
-        hsm_a.listen()
+        t2 = threading.Thread(target=hsm_a.listen)
+        t2.start()
+        time.sleep(0.1)
         recv_cal = setup_receive_frame(pin_b, 1, 1)
         _ = hsm_b.receive(recv_cal)
+        t2.join()
 
         read_cal = setup_read_frame(pin_b, 1)
         assert hsm_b.read_file(read_cal)[32:] == calibration
@@ -168,12 +192,18 @@ class TestRunScenarioTests:
         )
 
         # Attacker gets telemetry from Litho
-        hsm_b.listen()
-        _ = hsm_a.interrogate(pin_b)
+        t3 = threading.Thread(target=hsm_b.listen)
+        t3.start()
+        time.sleep(0.1)
+        _ = hsm_a.interrogate(pin_a)
+        t3.join()
 
-        hsm_b.listen()
+        t4 = threading.Thread(target=hsm_b.listen)
+        t4.start()
+        time.sleep(0.1)
         recv_tel = setup_receive_frame(pin_a, 2, 2)
         _ = hsm_a.receive(recv_tel)
+        t4.join()
 
         read_tel = setup_read_frame(pin_a, 2)
         assert hsm_a.read_file(read_tel)[32:] == telemetry

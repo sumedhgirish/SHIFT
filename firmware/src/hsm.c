@@ -196,6 +196,9 @@ static inline void SendResponse(StatusCode *status)
         case OPLISTEN:
             SendHeader(OP_LISTEN, 0);
             break;
+        case OPRECEIVE:
+            SendHeader(OP_RECEIVE, 0);
+            break;
         case FLASHWRITEERROR:
             SendError("ERROR: Damn, I couldn't commit that to memory.");
             break;

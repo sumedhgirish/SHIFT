@@ -197,6 +197,51 @@ void ReceiveParser(StatusCode *status)
         *status = INVALIDSLOT;
         return;
     }
+
+    uint8_t opCode = OP_RECEIVE;
+    UART_SendBytes(UART_PEER, (uint8_t *) &peer_magic_byte, 1, false);
+    UART_SendBytes(UART_PEER, &opCode, 1, false);
+
+    uint16_t bodyLen = 1;
+    UART_SendBytes(UART_PEER, (uint8_t *) &bodyLen, 2, true);
+
+    UART_SendBytes(UART_PEER, &readSlot, 1, true);
+
+    *status = UNKNOWNOP;
+    while (*status == UNKNOWNOP)
+    {
+        UART_RecvUntil(UART_PEER, peer_magic_byte);
+        UART_RecvBytes(UART_PEER, &opCode, 1, false);
+        switch (opCode)
+        {
+            case OP_RECEIVE:
+                *status = OPRECEIVE;
+                break;
+            default:
+                *status = UNKNOWNOP;
+                break;
+        }
+    }
+
+    uint16_t bodySize;
+    UART_RecvBytes(UART_PEER, (uint8_t *) &bodySize, 2, true);
+
+    *status = (bodySize == sizeof(FS_File)) ? OPRECEIVE : INVALIDBODYSIZE;
+
+    UART_RecvBytes(UART_PEER, (uint8_t *) &stage.preamble, sizeof(FS_Preamble),
+                   true);
+
+    switch (*status)
+    {
+        case OPRECEIVE:
+            UART_RecvBytes(UART_PEER, (uint8_t *) &stage.as.file,
+                           sizeof(FS_File), true);
+            StoreFile(writeSlot, status);
+            break;
+        default:
+            UART_RecvBytes(UART_PEER, NULL, bodySize, true);
+            break;
+    }
 }
 
 static void ReplyParser(StatusCode *status)
@@ -236,6 +281,33 @@ static void ReplyParser(StatusCode *status)
                    true);
 
     UART_SendBytes(UART_PEER, (uint8_t *) &stage.as.fat, bodyLen, true);
+}
+
+static void SendParser(StatusCode *status)
+{
+    uint8_t readSlot;
+    UART_RecvBytes(UART_PEER, &readSlot, 1, true);
+
+    if (readSlot >= NUM_SLOTS)
+    {
+        *status = INVALIDSLOT;
+        return;
+    }
+
+    LoadFile(readSlot, status);
+
+    uint8_t opCode = OP_RECEIVE;
+    UART_SendBytes(UART_PEER, (uint8_t *) &peer_magic_byte, 1, false);
+    UART_SendBytes(UART_PEER, &opCode, 1, false);
+
+    uint16_t bodyLen = sizeof(FS_File);
+    UART_SendBytes(UART_PEER, (uint8_t *) &bodyLen, 2, true);
+
+    UART_SendBytes(UART_PEER, (uint8_t *) &stage.preamble, sizeof(FS_Preamble),
+                   true);
+
+    UART_SendBytes(UART_PEER, (uint8_t *) &stage.as.file, sizeof(FS_File),
+                   true);
 }
 
 void ListenParser(StatusCode *status)
@@ -281,7 +353,8 @@ void ListenParser(StatusCode *status)
         case OPREPLY:
             ReplyParser(status);
             break;
-        case OPINTERROGATE:
+        case OPSEND:
+            SendParser(status);
             break;
         default:
             return;

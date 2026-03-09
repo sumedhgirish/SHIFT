@@ -1,6 +1,7 @@
 # pyright: reportMissingTypeStubs=false
 import os
 import struct
+import threading
 import time
 
 from ectf.tools.hsm_interface import HSMError, HSMIntf
@@ -83,11 +84,15 @@ class TestTimingSpecs:
     def test_interrogate_timing(
         self, hsm_a: HSMIntf, hsm_b: HSMIntf, pin_b: str
     ) -> None:
-        hsm_a.listen()
+        t = threading.Thread(target=hsm_a.listen)
+        t.start()
+        time.sleep(0.1)
 
         start = time.time()
         _ = hsm_b.interrogate(pin_b)
         duration = time.time() - start
+
+        t.join()
 
         assert duration <= MAX_TIME_INTERROGATE, (
             f"Interrogate operation took {duration}s (Max {MAX_TIME_INTERROGATE}s)"
@@ -105,16 +110,24 @@ class TestTimingSpecs:
             setup_write_frame(pin_b, 1, group_ids[4], "timing_recv", os.urandom(8192))
         )
 
-        hsm_b.listen()
+        t1 = threading.Thread(target=hsm_b.listen)
+        t1.start()
+        time.sleep(0.1)
 
         _ = hsm_a.interrogate(pin_a)
 
-        hsm_b.listen()
+        t1.join()
+
+        t2 = threading.Thread(target=hsm_b.listen)
+        t2.start()
+        time.sleep(0.1)
         recv_f = setup_receive_frame(pin_a, 1, 1)
 
         start = time.time()
         _ = hsm_a.receive(recv_f)
         duration = time.time() - start
+
+        t2.join()
 
         assert duration <= MAX_TIME_RECEIVE, (
             f"Receive operation took {duration}s (Max {MAX_TIME_RECEIVE}s)"
