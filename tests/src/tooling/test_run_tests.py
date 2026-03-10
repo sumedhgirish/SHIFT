@@ -292,13 +292,15 @@ class TestRunTests:
                 for _ in range(10):
                     # hsm_a must be put in listen mode first, but we can't send
                     # multiple commands to hsm_a at the same time.
+                    # All hsm_a interactions (listen + join) must complete inside
+                    # the lock so write_thread doesn't send a new request while
+                    # listen is still active.
                     with hsm_a_lock:
                         t = threading.Thread(target=hsm_a.listen)
                         t.start()
                         time.sleep(0.1)
-                        
-                    _ = hsm_b.interrogate(pin_b)
-                    t.join()
+                        _ = hsm_b.interrogate(pin_b)
+                        t.join()
             except Exception as e:
                 exceptions_caught.append(e)
 

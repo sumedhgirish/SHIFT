@@ -77,6 +77,30 @@ void ascon_adata(ascon_state_t* s, const mask_ad_uint32_t* ad, uint64_t adlen) {
   printstate("domain separation", s, NUM_SHARES_AD);
 }
 
+void ascon_encrypt_update(ascon_state_t* s, mask_c_uint32_t* c,
+                          const mask_m_uint32_t* m, uint64_t mlen) {
+  word_t ms, cx;
+  const int nr = ASCON_PB_ROUNDS;
+  /* full plaintext blocks only, no padding */
+  while (mlen >= ASCON_AEAD_RATE) {
+    ms = MLOAD((uint32_t*)m, NUM_SHARES_M);
+    s->x[0] = MXOR(s->x[0], ms, NUM_SHARES_M);
+    cx = MREDUCE(s->x[0], NUM_SHARES_M, NUM_SHARES_C);
+    MSTORE((uint32_t*)c, cx, NUM_SHARES_C);
+    if (ASCON_AEAD_RATE == 16) {
+      ms = MLOAD((uint32_t*)(m + 2), NUM_SHARES_M);
+      s->x[1] = MXOR(s->x[1], ms, NUM_SHARES_M);
+      cx = MREDUCE(s->x[1], NUM_SHARES_M, NUM_SHARES_C);
+      MSTORE((uint32_t*)(c + 2), cx, NUM_SHARES_C);
+    }
+    printstate("absorb plaintext", s, NUM_SHARES_M);
+    P(s, nr, NUM_SHARES_M);
+    m += ASCON_AEAD_RATE / 4;
+    c += ASCON_AEAD_RATE / 4;
+    mlen -= ASCON_AEAD_RATE;
+  }
+}
+
 void ascon_encrypt(ascon_state_t* s, mask_c_uint32_t* c,
                    const mask_m_uint32_t* m, uint64_t mlen) {
   word_t ms, cx;
@@ -119,6 +143,30 @@ void ascon_encrypt(ascon_state_t* s, mask_c_uint32_t* c,
     MSTORE((uint32_t*)c, cx, NUM_SHARES_C);
   }
   printstate("pad plaintext", s, NUM_SHARES_M);
+}
+
+void ascon_decrypt_update(ascon_state_t* s, mask_m_uint32_t* m,
+                          const mask_c_uint32_t* c, uint64_t clen) {
+  word_t cx;
+  const int nr = ASCON_PB_ROUNDS;
+  /* full ciphertext blocks only, no padding */
+  while (clen >= ASCON_AEAD_RATE) {
+    cx = MLOAD((uint32_t*)c, NUM_SHARES_C);
+    s->x[0] = MXOR(s->x[0], cx, NUM_SHARES_C);
+    MSTORE((uint32_t*)m, s->x[0], NUM_SHARES_M);
+    s->x[0] = MEXPAND(cx, NUM_SHARES_C, NUM_SHARES_M);
+    if (ASCON_AEAD_RATE == 16) {
+      cx = MLOAD((uint32_t*)(c + 2), NUM_SHARES_C);
+      s->x[1] = MXOR(s->x[1], cx, NUM_SHARES_C);
+      MSTORE((uint32_t*)(m + 2), s->x[1], NUM_SHARES_M);
+      s->x[1] = MEXPAND(cx, NUM_SHARES_C, NUM_SHARES_M);
+    }
+    printstate("insert ciphertext", s, NUM_SHARES_M);
+    P(s, nr, NUM_SHARES_M);
+    m += ASCON_AEAD_RATE / 4;
+    c += ASCON_AEAD_RATE / 4;
+    clen -= ASCON_AEAD_RATE;
+  }
 }
 
 void ascon_decrypt(ascon_state_t* s, mask_m_uint32_t* m,

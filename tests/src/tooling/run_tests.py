@@ -2,6 +2,7 @@ import sys
 from pathlib import Path
 
 import pytest
+import time
 
 
 def run() -> None:
@@ -9,6 +10,8 @@ def run() -> None:
     Entry point for the 'tests' command.
     Automatically locates the installed test directory and runs pytest.
     """
+    time.sleep(1)
+
     # Find the directory containing this script (which also contains conftest.py)
     test_dir = Path(__file__).parent.resolve()
 

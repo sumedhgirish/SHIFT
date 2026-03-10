@@ -460,7 +460,7 @@ GEN_INTERROGATEKEY: Callable[[dict[str, dict[str, dict[str, bytes]]]], str] = (
         f"""\
 StatusCode SelectInterrogateKey(uint8_t output[ASCON_KEY_SIZE])
 {{
-    KeyContext derivation_ctx;
+    KeyContext derivation_ctx = {{0}};
     static const uint8_t master_secret[MASTER_KEY_SIZE] = {{
         {interrogate_as_array(secrets)}
     }};
@@ -496,7 +496,7 @@ GEN_REPLYKEY: Callable[[dict[str, dict[str, dict[str, bytes]]]], str] = lambda s
     f"""\
 StatusCode SelectReplyKey(uint8_t output[ASCON_KEY_SIZE])
 {{
-    KeyContext derivation_ctx;
+    KeyContext derivation_ctx = {{0}};
     static const uint8_t master_secret[MASTER_KEY_SIZE] = {{
         {interrogate_as_array(secrets)}
     }};
@@ -521,7 +521,7 @@ StatusCode SelectReplyKey(uint8_t output[ASCON_KEY_SIZE])
 
     memclear(&derivation_ctx, sizeof(derivation_ctx), 0);
     __enable_irq();
-    return OPINTERROGATE;
+    return OPREPLY;
 }}
 """
 )

@@ -22,6 +22,9 @@ typedef enum
     SLOTEMPTY,
     FLASHERASEERROR,
     FLASHWRITEERROR,
+    DECRYPTIONERROR,
+    ENCRYPTIONERROR,
+    PEERERROR,
 } StatusCode;
 
 #endif

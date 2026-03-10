@@ -15,8 +15,12 @@ void ascon_initaead(ascon_state_t* s, const mask_key_uint32_t* k,
 void ascon_adata(ascon_state_t* s, const mask_ad_uint32_t* ad, uint64_t adlen);
 void ascon_encrypt(ascon_state_t* s, mask_c_uint32_t* c,
                    const mask_m_uint32_t* m, uint64_t mlen);
+void ascon_encrypt_update(ascon_state_t* s, mask_c_uint32_t* c,
+                          const mask_m_uint32_t* m, uint64_t mlen);
 void ascon_decrypt(ascon_state_t* s, mask_m_uint32_t* m,
                    const mask_c_uint32_t* c, uint64_t clen);
+void ascon_decrypt_update(ascon_state_t* s, mask_m_uint32_t* m,
+                          const mask_c_uint32_t* c, uint64_t clen);
 void ascon_final(ascon_state_t* s, const mask_key_uint32_t* k);
 void ascon_settag(ascon_state_t* s, mask_c_uint32_t* t);
 void ascon_xortag(ascon_state_t* s, const mask_c_uint32_t* t);

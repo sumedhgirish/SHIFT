@@ -1,5 +1,6 @@
 #include "parser.h"
 #include "filesystem.h"
+#include "handler.h"
 #include "randombytes.h"
 #include "secrets.h"
 #include "status.h"
@@ -20,24 +21,7 @@ void ListParser(StatusCode *status)
         return;
     }
 
-    uint32_t numEntries = 0;
-    for (uint8_t i = 0; i < NUM_SLOTS; i++)
-    {
-        if (Metadata_Table[i].status.magic == 0xdeadf00d &&
-            securecmp((uint8_t *) Metadata_Table[i].status.id,
-                      (uint8_t *) FAT_Table.entry[i].uuid, 16) == true)
-        {
-            stage.as.fat.slots[numEntries].groupid =
-                Metadata_Table[i].data.groupid;
-            stage.as.fat.slots[numEntries].slot = i;
-            memcpy((uint8_t *) stage.as.fat.slots[numEntries].filename,
-                   (uint8_t *) Metadata_Table[i].data.filename, 32);
-
-            numEntries++;
-        }
-    }
-
-    stage.as.fat.numEntries = numEntries;
+    ListHandler(status);
 }
 
 void ReadParser(StatusCode *status)
@@ -60,7 +44,7 @@ void ReadParser(StatusCode *status)
         return;
     }
 
-    LoadFile(readSlot, status);
+    ReadHandler(readSlot, status);
 }
 
 void WriteParser(StatusCode *status)
@@ -111,12 +95,34 @@ void WriteParser(StatusCode *status)
     UART_RecvBytes(UART_HOST, (uint8_t *) stage.as.file.content, filesize,
                    true);
 
-    StoreFile(writeSlot, status);
+    WriteHandler(writeSlot, status);
 }
 
 const uint8_t peer_magic_byte = '^';
 #define OP_INTERROGATE 'I'
 #define OP_RECEIVE 'R'
+#define OP_ERROR 'E'
+
+static inline void ResolveError(StatusCode *status)
+{
+    uint16_t errorCode;
+    UART_RecvBytes(UART_PEER, (uint8_t *) &errorCode, 2, true);
+    switch (errorCode)
+    {
+        case PERMISSIONERROR:
+            *status = PERMISSIONERROR;
+            break;
+        case INVALIDSLOT:
+            *status = INVALIDSLOT;
+            break;
+        case INVALIDBODYSIZE:
+            *status = INVALIDBODYSIZE;
+            break;
+        default:
+            *status = PEERERROR;
+            break;
+    }
+}
 
 void InterrogateParser(StatusCode *status)
 {
@@ -146,6 +152,9 @@ void InterrogateParser(StatusCode *status)
             case OP_INTERROGATE:
                 *status = OPINTERROGATE;
                 break;
+            case OP_ERROR:
+                ResolveError(status);
+                return;
             default:
                 *status = UNKNOWNOP;
                 break;
@@ -174,6 +183,8 @@ void InterrogateParser(StatusCode *status)
             UART_RecvBytes(UART_PEER, NULL, bodySize, true);
             break;
     }
+
+    InterrogateHandler(status);
 }
 
 void ReceiveParser(StatusCode *status)
@@ -217,6 +228,9 @@ void ReceiveParser(StatusCode *status)
             case OP_RECEIVE:
                 *status = OPRECEIVE;
                 break;
+            case OP_ERROR:
+                ResolveError(status);
+                return;
             default:
                 *status = UNKNOWNOP;
                 break;
@@ -246,31 +260,26 @@ void ReceiveParser(StatusCode *status)
 
 static void ReplyParser(StatusCode *status)
 {
-    uint32_t numEntries = 0;
-    for (uint8_t i = 0; i < NUM_SLOTS; i++)
-    {
-        if (Metadata_Table[i].status.magic == 0xdeadf00d &&
-            securecmp((uint8_t *) Metadata_Table[i].status.id,
-                      (uint8_t *) FAT_Table.entry[i].uuid, 16) == true)
-        {
-            stage.as.fat.slots[numEntries].groupid =
-                Metadata_Table[i].data.groupid;
-            stage.as.fat.slots[numEntries].slot = i;
-            memcpy((uint8_t *) stage.as.fat.slots[numEntries].filename,
-                   (uint8_t *) Metadata_Table[i].data.filename, 32);
+    ReplyHandler(status);
 
-            numEntries++;
-        }
+    uint8_t opCode;
+    uint16_t bodyLen;
+
+    if (*status != OPREPLY)
+    {
+        opCode = OP_ERROR;
+        bodyLen = (uint16_t) (*status);
+        UART_SendBytes(UART_PEER, (uint8_t *) &peer_magic_byte, 1, false);
+        UART_SendBytes(UART_PEER, &opCode, 1, false);
+        UART_SendBytes(UART_PEER, (uint8_t *) &bodyLen, 2, true);
+        return;
     }
 
-    stage.as.fat.numEntries = numEntries;
-
-    uint8_t opCode = OP_INTERROGATE;
+    opCode = OP_INTERROGATE;
     UART_SendBytes(UART_PEER, (uint8_t *) &peer_magic_byte, 1, false);
     UART_SendBytes(UART_PEER, &opCode, 1, false);
 
-    uint16_t bodyLen =
-        (uint16_t) numEntries * sizeof(FS_Slot) + sizeof(uint32_t);
+    bodyLen = sizeof(FS_FAT);
     UART_SendBytes(UART_PEER, (uint8_t *) &bodyLen, 2, true);
 
     UART_SendBytes(UART_PEER, (uint8_t *) &stage.preamble.nonce, NONCE_SIZE,
@@ -296,11 +305,24 @@ static void SendParser(StatusCode *status)
 
     LoadFile(readSlot, status);
 
-    uint8_t opCode = OP_RECEIVE;
+    uint8_t opCode;
+    uint16_t bodyLen;
+
+    if (*status != OPSEND)
+    {
+        opCode = OP_ERROR;
+        bodyLen = (uint16_t) (*status);
+        UART_SendBytes(UART_PEER, (uint8_t *) &peer_magic_byte, 1, false);
+        UART_SendBytes(UART_PEER, &opCode, 1, false);
+        UART_SendBytes(UART_PEER, (uint8_t *) &bodyLen, 2, true);
+        return;
+    }
+
+    opCode = OP_RECEIVE;
     UART_SendBytes(UART_PEER, (uint8_t *) &peer_magic_byte, 1, false);
     UART_SendBytes(UART_PEER, &opCode, 1, false);
 
-    uint16_t bodyLen = sizeof(FS_File);
+    bodyLen = sizeof(FS_File);
     UART_SendBytes(UART_PEER, (uint8_t *) &bodyLen, 2, true);
 
     UART_SendBytes(UART_PEER, (uint8_t *) &stage.preamble, sizeof(FS_Preamble),

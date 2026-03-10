@@ -29,8 +29,8 @@ typedef struct
     uint8_t key[ECC_PUB_KEYSIZE];
     uint8_t nonce[NONCE_SIZE];
     uint8_t fileid[ID_SIZE];
-    uint8_t filename[32];
     uint8_t tag[ASCON_TAG_SIZE];
+    uint8_t filename[32];
 } PACKED FS_Metadata;
 
 typedef struct

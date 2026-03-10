@@ -1,9 +1,11 @@
 #include "dl_config.h"
 #include "filesystem.h"
 #include "parser.h"
+#include "randombytes.h"
 #include "status.h"
 #include "stubs.h"
 #include "ti/driverlib/dl_gpio.h"
+#include "uECC.h"
 #include "uart.h"
 #include <assert.h>
 #include <stdbool.h>
@@ -11,12 +13,20 @@
 
 #define HSM_PIN_SIZE 6
 
+static int ecc_rng(uint8_t *dest, unsigned size)
+{
+    randombytes(dest, size);
+    return 1;
+}
+
 static void init(void)
 {
     __disable_irq();
 
     UART_init();
     SYSCFG_DL_init();
+    memclear((uint8_t *) &stage, sizeof(FS_Stage), 0);
+    uECC_set_rng(&ecc_rng);
 
     __enable_irq();
 }
@@ -215,6 +225,13 @@ static inline void SendResponse(StatusCode *status)
         case KEYGENERROR:
             SendError("ERROR: Misplaced my keys! Oops.");
             break;
+        case DECRYPTIONERROR:
+            SendError(
+                "ERROR: Decryption failed. Maybe the data was corrupted?");
+            break;
+        case ENCRYPTIONERROR:
+            SendError("ERROR: Encryption failed.");
+            break;
         case PERMISSIONERROR:
             SendError(
                 "ERROR: You dont have permission to do that. Sucks to be you.");
@@ -222,9 +239,14 @@ static inline void SendResponse(StatusCode *status)
         case INVALIDBODYSIZE:
             SendError("ERROR: That message was too fat for comfort.");
             break;
+        case PEERERROR:
+            SendError("ERROR: Something went wrong with the peer. Maybe they "
+                      "sent something weird?");
+            break;
         case UNKNOWNOP:
             SendError("ERROR: You somehow managed send something that I "
                       "cant parse. Congrats!");
+            break;
         default:
             SendError("ERROR: Request not sexy enough, hogli bidu");
             break;
