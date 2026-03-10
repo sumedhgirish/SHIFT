@@ -9,5 +9,7 @@ void ReadHandler(uint8_t slot, StatusCode *status);
 void WriteHandler(uint8_t slot, StatusCode *status);
 void InterrogateHandler(StatusCode *status);
 void ReplyHandler(StatusCode *status);
+void SendHandler(uint8_t slot, StatusCode *status);
+void ReceiveHandler(uint8_t slot, StatusCode *status);
 
 #endif

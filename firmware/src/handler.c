@@ -203,3 +203,72 @@ void ReplyHandler(StatusCode *status)
         return;
     }
 }
+
+void SendHandler(uint8_t slot, StatusCode *status)
+{
+    if (*status != OPSEND)
+        return;
+
+    LoadFile(slot, status);
+    if (*status != OPSEND)
+        return;
+
+    uint8_t derivedKey[ASCON_KEY_SIZE] = {0};
+    *status = SelectSendKey(stage.as.file.metadata.groupid, derivedKey);
+
+    int estat;
+    if (*status == OPSEND)
+    {
+        estat =
+            ascon_aead_encrypt((uint8_t *) &stage.preamble.tag,
+                               (uint8_t *) &stage.as.file.metadata.key,
+                               (uint8_t *) &stage.as.file.metadata.key,
+                               sizeof(FS_File) - sizeof(uint16_t),
+                               (uint8_t *) &stage.preamble.nonce,
+                               NONCE_SIZE + ID_SIZE + sizeof(uint16_t),
+                               (uint8_t *) stage.preamble.nonce, derivedKey);
+        memclear(derivedKey, ASCON_KEY_SIZE, 0);
+    }
+    else
+    {
+        memclear(derivedKey, ASCON_KEY_SIZE, 0);
+        return;
+    }
+    if (estat != 0)
+    {
+        *status = ENCRYPTIONERROR;
+        return;
+    }
+}
+
+void ReceiveHandler(uint8_t slot, StatusCode *status)
+{
+    if (*status != OPRECEIVE)
+        return;
+    uint8_t derivedKey[ASCON_KEY_SIZE] = {0};
+    *status = SelectRecvKey(stage.as.file.metadata.groupid, derivedKey);
+    int dstat;
+    if (*status == OPRECEIVE)
+    {
+        dstat =
+            ascon_aead_decrypt((uint8_t *) &stage.as.file.metadata.key,
+                               (uint8_t *) &stage.preamble.tag,
+                               (uint8_t *) &stage.as.file.metadata.key,
+                               sizeof(FS_File) - sizeof(uint16_t),
+                               (uint8_t *) &stage.preamble.nonce,
+                               NONCE_SIZE + ID_SIZE + sizeof(uint16_t),
+                               (uint8_t *) stage.preamble.nonce, derivedKey);
+        memclear(derivedKey, ASCON_KEY_SIZE, 0);
+    }
+    else
+    {
+        memclear(derivedKey, ASCON_KEY_SIZE, 0);
+        return;
+    }
+    if (dstat != 0)
+    {
+        *status = DECRYPTIONERROR;
+        return;
+    }
+    StoreFile(slot, status);
+}

@@ -250,7 +250,7 @@ void ReceiveParser(StatusCode *status)
         case OPRECEIVE:
             UART_RecvBytes(UART_PEER, (uint8_t *) &stage.as.file,
                            sizeof(FS_File), true);
-            StoreFile(writeSlot, status);
+            ReceiveHandler(writeSlot, status);
             break;
         default:
             UART_RecvBytes(UART_PEER, NULL, bodySize, true);
@@ -303,7 +303,7 @@ static void SendParser(StatusCode *status)
         return;
     }
 
-    LoadFile(readSlot, status);
+    SendHandler(readSlot, status);
 
     uint8_t opCode;
     uint16_t bodyLen;

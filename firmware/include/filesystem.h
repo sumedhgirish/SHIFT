@@ -15,9 +15,9 @@
 typedef struct
 {
     uint8_t key[ECC_PUB_KEYSIZE];
+    uint8_t tag[ASCON_TAG_SIZE];
     uint8_t nonce[NONCE_SIZE];
     uint8_t mesgid[ID_SIZE];
-    uint8_t tag[ASCON_TAG_SIZE];
 } PACKED FS_Preamble;
 
 #define MAX_FILE_SIZE 8192
