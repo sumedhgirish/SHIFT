@@ -106,7 +106,7 @@ extern volatile const FS_FiledataFlash Filedata_Table;
 
 typedef struct
 {
-    bool timeout;
+    uint64_t timeout;
 } FS_SystemStatusFlash;
 
 extern volatile const FS_SystemStatusFlash SystemStatus;

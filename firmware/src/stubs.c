@@ -9,7 +9,9 @@
 
 #include "stubs.h"
 #include "ascon.h"
+#include "filesystem.h"
 #include "secrets.h"
+#include "ti/driverlib/dl_flashctl.h"
 #include <stddef.h>
 
 #define RAMFUNC                                                                \
@@ -56,6 +58,11 @@ bool checkpin(uint8_t inputPin[6])
     bool valid1 = storedPin == inputPinVal;
     bool valid2 =
         securecmp((const uint8_t *) HSM_PIN, (const uint8_t *) inputPin, 6);
+
+    uint64_t value = (0 - (uint64_t) (valid1 && valid2));
+    DL_FlashCTL_programMemoryBlocking64WithECCGenerated(
+        FLASHCTL, (uint32_t) &SystemStatus.timeout, (uint32_t *) &value, 2,
+        DL_FLASHCTL_REGION_SELECT_MAIN);
 
     return valid1 && valid2;
 }

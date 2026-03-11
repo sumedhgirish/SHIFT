@@ -1,5 +1,6 @@
 #include "dl_config.h"
 #include "filesystem.h"
+#include "flash.h"
 #include "parser.h"
 #include "randombytes.h"
 #include "status.h"
@@ -277,6 +278,12 @@ int main(void)
         ValidateBodySize(bodyLen, &status);
 
         HandleRequest(&status, bodyLen);
+
+        if (SystemStatus.timeout == 0)
+        {
+            delay_cycles((32000000 * 9) / 2);
+            FLASH_Erase((uint32_t) &SystemStatus, &status);
+        }
 
         SendResponse(&status);
     }
