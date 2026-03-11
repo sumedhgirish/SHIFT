@@ -51,3 +51,9 @@ If you have a LaTeX distribution (like `texlive`) installed:
    ```
 
 1. Open the generated `refman.pdf` document.
+
+### Authors
+
+1. Sumedh Girish
+2. Aditya Naskar
+3. Shriniketh Kana
