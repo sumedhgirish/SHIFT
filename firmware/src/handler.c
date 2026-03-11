@@ -219,14 +219,14 @@ void SendHandler(uint8_t slot, StatusCode *status)
     int estat;
     if (*status == OPSEND)
     {
-        estat =
-            ascon_aead_encrypt((uint8_t *) &stage.preamble.tag,
-                               (uint8_t *) &stage.as.file.metadata.key,
-                               (uint8_t *) &stage.as.file.metadata.key,
-                               sizeof(FS_File) - sizeof(uint16_t),
-                               (uint8_t *) &stage.preamble.nonce,
-                               NONCE_SIZE + ID_SIZE + sizeof(uint16_t),
-                               (uint8_t *) stage.preamble.nonce, derivedKey);
+        estat = ascon_aead_encrypt(
+            (uint8_t *) &stage.preamble.tag,
+            (uint8_t *) &stage.as.file.metadata.key,
+            (uint8_t *) &stage.as.file.metadata.key,
+            sizeof(FS_FileEntry) + sizeof(FS_Metadata) - sizeof(uint16_t),
+            (uint8_t *) &stage.preamble.nonce,
+            NONCE_SIZE + ID_SIZE + sizeof(uint16_t),
+            (uint8_t *) stage.preamble.nonce, derivedKey);
         memclear(derivedKey, ASCON_KEY_SIZE, 0);
     }
     else
@@ -250,14 +250,14 @@ void ReceiveHandler(uint8_t slot, StatusCode *status)
     int dstat;
     if (*status == OPRECEIVE)
     {
-        dstat =
-            ascon_aead_decrypt((uint8_t *) &stage.as.file.metadata.key,
-                               (uint8_t *) &stage.preamble.tag,
-                               (uint8_t *) &stage.as.file.metadata.key,
-                               sizeof(FS_File) - sizeof(uint16_t),
-                               (uint8_t *) &stage.preamble.nonce,
-                               NONCE_SIZE + ID_SIZE + sizeof(uint16_t),
-                               (uint8_t *) stage.preamble.nonce, derivedKey);
+        dstat = ascon_aead_decrypt(
+            (uint8_t *) &stage.as.file.metadata.key,
+            (uint8_t *) &stage.preamble.tag,
+            (uint8_t *) &stage.as.file.metadata.key,
+            sizeof(FS_FileEntry) + sizeof(FS_Metadata) - sizeof(uint16_t),
+            (uint8_t *) &stage.preamble.nonce,
+            NONCE_SIZE + ID_SIZE + sizeof(uint16_t),
+            (uint8_t *) stage.preamble.nonce, derivedKey);
         memclear(derivedKey, ASCON_KEY_SIZE, 0);
     }
     else
