@@ -85,9 +85,10 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Architecture Flags (Cortex-M0+) for consistency across compilers
 set(ARCH_FLAGS -mcpu=cortex-m0plus -mfloat-abi=soft -mthumb)
 
-# Optimization Flags: Full (-O3) for Crypto, Balanced (-O2) for Firmware
-set(FIRMWARE_OPT -O2)
-set(CRYPTO_OPT -O3)
+# Optimization Flags: Aggressive (-Ofast / -flto) for Firmware. Full (-Ofast) for Crypto.
+# NOTE: DO NOT use -flto for Crypto! GCC and TI Clang LTO formats are incompatible.
+set(FIRMWARE_OPT -Ofast -flto)
+set(CRYPTO_OPT -Ofast)
 set(SECTION_FLAGS -ffunction-sections -fdata-sections)
 
 # Warning & Diagnostics Flags
@@ -250,6 +251,7 @@ target_compile_options(
 target_link_options(
     ${PROJECT_NAME}
     PRIVATE
+        "-flto"
         "-Wl,${PROJECT_DIR}/linker.cmd"
         "-Wl,-m,${PROJECT_NAME}.map"
         "-Wl,--rom_model"

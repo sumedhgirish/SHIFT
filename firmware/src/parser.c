@@ -86,14 +86,14 @@ void WriteParser(StatusCode *status)
         return;
     }
 
+    UART_RecvBytes(UART_HOST, (uint8_t *) stage.as.file.content, filesize,
+                   true);
+
     strncpy((char *) stage.as.file.metadata.filename, (const char *) filename,
             32);
     stage.as.file.metadata.groupid = groupid;
     stage.as.file.entry.filesize = filesize;
     randombytes((uint8_t *) stage.as.file.metadata.fileid, ID_SIZE);
-
-    UART_RecvBytes(UART_HOST, (uint8_t *) stage.as.file.content, filesize,
-                   true);
 
     WriteHandler(writeSlot, status);
 }

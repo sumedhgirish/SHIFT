@@ -37,56 +37,37 @@ static RAMFUNC void FLASH_ReadSector(uint32_t address, uint32_t *buffer)
 
 static RAMFUNC void FLASH_ProcessSector(uint32_t sector_base, uint32_t offset,
                                         uint32_t chunk, const uint8_t *src_ptr,
-                                        StatusCode *status)
+                                        StatusCode *status, bool fullChunk)
 {
-    FLASH_ReadSector(sector_base, sector_buffer);
+    if (!fullChunk)
+        FLASH_ReadSector(sector_base, sector_buffer);
 
-    bool needs_update = false;
-    bool is_blank = true;
     uint8_t *dst = (uint8_t *) sector_buffer;
-
-    for (uint32_t i = 0; i < DL_FLASHCTL_SECTOR_SIZE; i++)
+    for (uint32_t i = 0; i < chunk; i++)
     {
-        if (dst[i] != 0xFF)
-            is_blank = false;
-
-        if (i >= offset && i < offset + chunk)
-        {
-            uint8_t newVal = src_ptr[i - offset];
-            if (dst[i] != newVal)
-            {
-                dst[i] = newVal;
-                needs_update = true;
-            }
-        }
+        dst[i + offset] = src_ptr[i];
     }
 
-    if (needs_update)
+    FLASH_Erase(sector_base, status);
+    if (*status == FLASHERASEERROR)
+        return;
+
+    DL_FlashCTL_executeClearStatus(FLASHCTL);
+    DL_FlashCTL_unprotectSector(FLASHCTL, sector_base,
+                                DL_FLASHCTL_REGION_SELECT_MAIN);
+    if (DL_FlashCTL_programMemoryBlockingFromRAM64WithECCGenerated(
+            FLASHCTL, sector_base, sector_buffer, DL_FLASHCTL_SECTOR_SIZE / 4U,
+            DL_FLASHCTL_REGION_SELECT_MAIN) !=
+        DL_FLASHCTL_COMMAND_STATUS_PASSED)
     {
-        if (!is_blank)
-        {
-            FLASH_Erase(sector_base, status);
-            if (*status == FLASHERASEERROR)
-                return;
-        }
+        *status = FLASHWRITEERROR;
+        return;
+    }
 
-        DL_FlashCTL_executeClearStatus(FLASHCTL);
-        DL_FlashCTL_unprotectSector(FLASHCTL, sector_base,
-                                    DL_FLASHCTL_REGION_SELECT_MAIN);
-        if (DL_FlashCTL_programMemoryBlockingFromRAM64WithECCGenerated(
-                FLASHCTL, sector_base, sector_buffer,
-                DL_FLASHCTL_SECTOR_SIZE / 4U, DL_FLASHCTL_REGION_SELECT_MAIN) !=
-            DL_FLASHCTL_COMMAND_STATUS_PASSED)
-        {
-            *status = FLASHWRITEERROR;
-            return;
-        }
-
-        if (DL_FlashCTL_waitForCmdDone(FLASHCTL) == false)
-        {
-            *status = FLASHWRITEERROR;
-            return;
-        }
+    if (DL_FlashCTL_waitForCmdDone(FLASHCTL) == false)
+    {
+        *status = FLASHWRITEERROR;
+        return;
     }
 }
 
@@ -107,7 +88,8 @@ RAMFUNC void FLASH_Write(uint32_t address, uint8_t *buffer, uint32_t size,
         if (chunk > remaining)
             chunk = remaining;
 
-        FLASH_ProcessSector(sector_base, offset, chunk, src_ptr, status);
+        FLASH_ProcessSector(sector_base, offset, chunk, src_ptr, status,
+                            chunk == DL_FLASHCTL_SECTOR_SIZE);
         if (*status == FLASHWRITEERROR || *status == FLASHERASEERROR)
             return;
 

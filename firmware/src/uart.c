@@ -121,7 +121,7 @@ void UART_RecvUntil(UART_Regs *channel, uint8_t chr)
         (channel == UART_HOST) ? &host.rx : &peer.rx;
 
     buffer->progress = 0;
-    buffer->dirty = false;
+    buffer->dirty = buffer->count > 0;
 }
 
 void UART_RecvBytes(UART_Regs *channel, uint8_t *out, uint32_t length, bool eof)

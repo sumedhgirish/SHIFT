@@ -538,7 +538,7 @@ static int default_RNG(uint8_t *dest, unsigned size)
 
 static uECC_RNG_Function g_rng_function = &default_RNG;
 
-void uECC_set_rng(uECC_RNG_Function rng_function)
+__attribute__((used)) void uECC_set_rng(uECC_RNG_Function rng_function)
 {
     g_rng_function = rng_function;
 }
