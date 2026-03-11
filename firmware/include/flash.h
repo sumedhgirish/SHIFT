@@ -34,7 +34,34 @@
 #define RAMFUNC                                                                \
     __attribute__((section(".TI.ramfunc"))) __attribute__((noinline))
 
+/**
+ * @brief Erases a physical sector of flash memory.
+ *
+ * Temporarily disables flash protection for the target sector, issues the erase
+ * command to the controller, and re-engages protection. Safe to call only
+ * when executing from SRAM.
+ *
+ * @param address Base address of the 1024-byte sector to erase.
+ * @param status Global status variable to update on failure.
+ *
+ * @note This function blocks until the erase cycle completes.
+ */
 RAMFUNC void FLASH_Erase(uint32_t address, StatusCode *status);
+
+/**
+ * @brief Writes data into a physical flash sector.
+ *
+ * Writes a buffer into flash memory in 64-bit words. Handles flash unlocking,
+ * execution of the write sequence, and locking. Automatically pads unaligned
+ * writes to 64-bit boundaries with 0xFF.
+ *
+ * @param address Base address of the flash memory to write to.
+ * @param buffer Pointer to the source data in SRAM.
+ * @param size Number of bytes to write.
+ * @param status Global status variable to update on failure/misalignment.
+ *
+ * @note Must execute from SRAM.
+ */
 RAMFUNC void FLASH_Write(uint32_t address, uint8_t *buffer, uint32_t size,
                          StatusCode *status);
 

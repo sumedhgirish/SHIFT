@@ -30,9 +30,6 @@ uint32_t getrandom32(void)
  * @brief Fills a buffer with true random bytes.
  *
  * Utilizes getrandom32() internally and handles byte alignment.
- *
- * @param buf Destination buffer.
- * @param len Number of bytes to generate.
  */
 void randombytes(uint8_t *buf, uint64_t len)
 {

@@ -1,12 +1,32 @@
 ##
 # @file derive_secrets.py
 # @author Sumedh Girish
-# @brief Script to derive and generate C source/header files containing HSM secrets.
+# @brief Code generator for HSM cryptographic identities and access control.
 #
-# This utility takes a pickled secrets file and a set of group-specific permissions,
-# generating 'secrets.c' and 'secrets.h'. It implements a unified, atomic
-# selection API where each routine handles internal ECC keypair generation,
-# ECDH shared secret derivation, and group-based authorization checks.
+# **Overview**
+#
+# This script is the core provisioning utility for the SHIFT HSM. It takes a master
+# secrets dictionary (generated during the system build phase) and a user-provided
+# permission list to dynamically generate `secrets.c` and `secrets.h`.
+#
+# **Cryptographic Architecture**
+#
+# Instead of storing static keys that can be easily extracted from flash memory,
+# this framework implements an asymmetric derivation scheme:
+# 1.  It compiles group-specific public/private keypairs into the firmware.
+# 2.  At runtime, handlers generate ephemeral keys, blinding them using the TRNG.
+# 3.  An ECDH shared secret is established between the static device key and the
+#     blinded ephemeral key.
+# 4.  This shared secret is fed into an ASCON-XOF Key Derivation Function (KDF)
+#     along with a domain string ("FS-ASCON-KDF") to produce the final 128-bit
+#     AEAD session key.
+#
+# **Usage Examples:**
+#
+# ```bash
+# # Grant HSM Read/Write for group 0x1234, and Read/Recv for 0x4321
+# python3 derive_secrets.py global.secrets 123456 "1234=RW-:4321=R-C"
+# ```
 #
 
 # flake8: noqa: E731

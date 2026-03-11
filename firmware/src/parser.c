@@ -1,3 +1,14 @@
+/**
+ * @file parser.c
+ * @author Sumedh Girish
+ * @brief Request stream parsing and initial validation layer.
+ *
+ * The parser layer reads incoming UART payloads, extracts parameters like
+ * user PINs, slot indices, and payload sizes, and performs the first layer
+ * of authorization (e.g., matching the User PIN) before handing off cleanly
+ * parsed structures to the core Handlers.
+ */
+
 #include "parser.h"
 #include "filesystem.h"
 #include "handler.h"
@@ -10,6 +21,9 @@
 #include <stdbool.h>
 #include <string.h>
 
+/**
+ * @brief Parses an inbound Host LIST command and verifies the user PIN.
+ */
 void ListParser(StatusCode *status)
 {
     uint8_t pin[6] = {0};
@@ -24,6 +38,9 @@ void ListParser(StatusCode *status)
     ListHandler(status);
 }
 
+/**
+ * @brief Parses an inbound Host READ command, fetching target slot and PIN.
+ */
 void ReadParser(StatusCode *status)
 {
     uint8_t pin[6] = {0};
@@ -47,6 +64,12 @@ void ReadParser(StatusCode *status)
     ReadHandler(readSlot, status);
 }
 
+/**
+ * @brief Parses an inbound Host WRITE command and manages volatile staging.
+ *
+ * Consumes the PIN, target slot, group assignment, filename, and payload. If
+ * verification fails natively, the UART is drained to maintain synchronization.
+ */
 void WriteParser(StatusCode *status)
 {
     uint8_t pin[6] = {0};
@@ -187,6 +210,12 @@ void InterrogateParser(StatusCode *status)
     InterrogateHandler(status);
 }
 
+/**
+ * @brief Parses an inbound Peer RECEIVE command, intercepting secure file transfers.
+ *
+ * Reads metadata and the encrypted file chunk from the peer link, syncing it
+ * into the `stage` buffer before requesting handler decryption and storage.
+ */
 void ReceiveParser(StatusCode *status)
 {
     uint8_t pin[6] = {0};

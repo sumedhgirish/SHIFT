@@ -1,3 +1,14 @@
+/**
+ * @file hsm.c
+ * @author Sumedh Girish
+ * @brief Main entry point and core dispatch loop for the SHIFT HSM.
+ *
+ * This file contains the primary `main` loop that constantly listens for
+ * Host or Peer commands over UART. It handles opcode parsing, basic size
+ * validation, and dispatches to the appropriate parser, before finally
+ * formulating and transmitting a serialized response frame.
+ */
+
 #include "dl_config.h"
 #include "filesystem.h"
 #include "flash.h"
@@ -48,6 +59,12 @@ static void BlinkLED(void)
 #define OP_RECEIVE 'C'
 #define OP_LISTEN 'N'
 
+/**
+ * @brief Parses an incoming raw byte into a recognized operational Status.
+ *
+ * @param opCode The raw byte character from UART.
+ * @param status Pointer to the current system state.
+ */
 static inline void ParseOpcode(uint8_t opCode, StatusCode *status)
 {
     switch (opCode)
@@ -120,6 +137,15 @@ static inline void ValidateBodySize(uint16_t bodyLen, StatusCode *status)
     }
 }
 
+/**
+ * @brief Top-level request dispatcher based on resolved Command State.
+ *
+ * Routes execution to specific parsers which will handle subsequent UART
+ * payloads and trigger the actual Handler routines.
+ *
+ * @param status Current validated system state.
+ * @param bodyLen Expected length of the incoming payload body.
+ */
 static inline void HandleRequest(StatusCode *status, uint16_t bodyLen)
 {
     switch (*status)
@@ -169,6 +195,14 @@ static inline void SendHeader(uint8_t opCode, uint16_t bodyLen)
     UART_SendBytes(UART_HOST, (uint8_t *) &bodyLen, 2, true);
 }
 
+/**
+ * @brief Constructs and transmits the final output frame to the Host.
+ *
+ * Serializes data from the volatile `stage` into the UART TX buffer. It handles
+ * successful payload transmissions as well as sending human-readable error messages.
+ *
+ * @param status Final state of the request (success or specific error code).
+ */
 static inline void SendResponse(StatusCode *status)
 {
     switch (*status)

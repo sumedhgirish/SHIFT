@@ -1,4 +1,14 @@
 
+/**
+ * @file uart.c
+ * @author Sumedh Girish
+ * @brief Non-blocking UART driver with Ring Buffer management.
+ *
+ * Handles concurrent stream processing on two UART interfaces (Host and Peer).
+ * Incorporates software flow-control (ACK synchronization) to prevent buffer
+ * overflows during bulk cryptographic transfers.
+ */
+
 #include "uart.h"
 #include "dl_config.h"
 #include "stubs.h"
@@ -11,6 +21,13 @@ volatile UART_Channel peer = {0};
 static inline void WaitForHostACK(void);
 static inline void WaitForPeerACK(void);
 
+/**
+ * @brief Drains the internal ring buffer out to the physical TX FIFO.
+ *
+ * Enforces ACK-based synchronization chunks. If the transmitted count exceeds
+ * a chunk limit, it blocks waiting for a remote ACK to ensure the peer hasn't
+ * been overrun.
+ */
 static inline void UART_TransmitAll(UART_Regs *channel)
 {
     volatile UART_RingBuffer *buffer =
@@ -220,6 +237,12 @@ void UART_init(void)
     UART_ClearChannel(&peer);
 }
 
+/**
+ * @brief Common UART Interrupt Service Routine for draining the hardware RX FIFO.
+ *
+ * Automatically pulls hardware buffer contents into the volatile, asynchronous
+ * software ring buffers. Drops bytes silently if the software buffer is full.
+ */
 static inline void IRQ_Handler(UART_Regs *source, volatile UART_Channel *buffer)
 {
     uint8_t tmp[MAX_DRAIN_SIZE] = {0};

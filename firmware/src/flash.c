@@ -1,3 +1,11 @@
+/**
+ * @file flash.c
+ * @author Sumedh Girish
+ * @brief Flash Memory Controller Implementation.
+ *
+ * Provides safe routines for flash sector erase and program operations.
+ * Operations are strictly constrained to SRAM execution spaces via `RAMFUNC`.
+ */
 
 #include "flash.h"
 #include "status.h"
@@ -26,6 +34,15 @@ RAMFUNC void FLASH_Erase(uint32_t address, StatusCode *status)
         *status = FLASHERASEERROR;
 }
 
+/**
+ * @brief Reads a full flash sector into a 64-bit aligned SRAM buffer.
+ *
+ * Essential for the read-modify-write cycle. Executes from SRAM to 
+ * avoid bus contention during subsequent flash erase commands.
+ *
+ * @param address Base address of the sector to read.
+ * @param buffer Pointer to the 64-bit aligned SRAM buffer.
+ */
 static RAMFUNC void FLASH_ReadSector(uint32_t address, uint32_t *buffer)
 {
     const volatile uint32_t *src = (const uint32_t *) address;
@@ -35,6 +52,19 @@ static RAMFUNC void FLASH_ReadSector(uint32_t address, uint32_t *buffer)
     }
 }
 
+/**
+ * @brief Executes a read-modify-write cycle for a single flash sector.
+ *
+ * If the data chunk doesn't cleanly overwrite the entire sector, the current
+ * sector is loaded into SRAM, patched, erased, and reprogrammed.
+ *
+ * @param sector_base Aligned flash sector base address.
+ * @param offset Byte-offset within the sector to apply the new data.
+ * @param chunk Size of the new data in bytes.
+ * @param src_ptr Pointer to the new data in SRAM.
+ * @param status Global status variable.
+ * @param fullChunk True if the chunk size precisely matches the sector size.
+ */
 static RAMFUNC void FLASH_ProcessSector(uint32_t sector_base, uint32_t offset,
                                         uint32_t chunk, const uint8_t *src_ptr,
                                         StatusCode *status, bool fullChunk)

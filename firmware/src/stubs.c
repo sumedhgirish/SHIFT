@@ -23,11 +23,6 @@
  * Instead of comparing bytes directly (which is vulnerable to timing attacks),
  * this function hashes both inputs into a temporary buffer and then performs
  * a bitwise accumulated XOR comparison on the hashes.
- *
- * @param a First buffer to compare.
- * @param b Second buffer to compare.
- * @param size Number of bytes to compare.
- * @return bool true if buffers are identical.
  */
 bool securecmp(const uint8_t *a, const uint8_t *b, uint32_t size)
 {
@@ -47,6 +42,14 @@ bool securecmp(const uint8_t *a, const uint8_t *b, uint32_t size)
     return result == 0;
 }
 
+/**
+ * @brief Securely validates a user-provided PIN against the stored system PIN.
+ *
+ * Executes both a standard memory comparison and a secure, constant-time
+ * hash-based comparison (`securecmp()`). Any discrepancy immediately
+ * corrupts the timeout token in flash memory to trip the internal trap system,
+ * permanently mitigating brute force attempts.
+ */
 bool checkpin(uint8_t inputPin[6])
 {
     uint64_t storedPin = 0;
@@ -74,10 +77,6 @@ bool checkpin(uint8_t inputPin[6])
  * read again before it goes out of scope. memclear() uses volatile pointers
  * and a three-stage clear (alignment, word-clear, tail-clear) to ensure that
  * the memory is actually modified in SRAM, protecting against data remanence.
- *
- * @param v Pointer to memory to clear.
- * @param n Number of bytes.
- * @param value Byte value to write (typically 0x00 or 0xFF).
  */
 RAMFUNC void memclear(void *v, uint32_t n, uint8_t value)
 {

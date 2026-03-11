@@ -1,3 +1,13 @@
+/**
+ * @file handler.c
+ * @author Sumedh Girish
+ * @brief Implementation of Host and Peer Command Handlers.
+ *
+ * Implements the execution flows for all system operations. Handlers are
+ * responsible for orchestrating key derivation, AEAD encryption/decryption,
+ * and calling the appropriate filesystem routines.
+ */
+
 #include "handler.h"
 #include "crypto_aead.h"
 #include "filesystem.h"
@@ -31,6 +41,13 @@ void ListHandler(StatusCode *status)
     stage.as.fat.numEntries = numEntries;
 }
 
+/**
+ * @brief Execution flow for a Host READ command.
+ *
+ * 1. Loads the target slot into the volatile `stage`.
+ * 2. Derives the unique read key for the file's owner group.
+ * 3. In-place decrypts the file payload using ASCON-128a.
+ */
 void ReadHandler(uint8_t slot, StatusCode *status)
 {
     if (*status != OPREAD)
@@ -68,6 +85,13 @@ void ReadHandler(uint8_t slot, StatusCode *status)
     }
 }
 
+/**
+ * @brief Execution flow for a Host WRITE command.
+ *
+ * 1. Derives the unique write key for the targeted group ID.
+ * 2. In-place encrypts the staged plaintext using ASCON-128a.
+ * 3. Triggers a commit to persistent flash storage.
+ */
 void WriteHandler(uint8_t slot, StatusCode *status)
 {
     if (*status != OPWRITE)
@@ -113,6 +137,13 @@ static inline bool isReceivable(uint16_t groupid)
     return false;
 }
 
+/**
+ * @brief Execution flow for a Peer INTERROGATE command.
+ *
+ * Decrypts a filesystem allocation table (FAT) sent by a peer to determine
+ * which files the peer holds that this HSM is authorized to RECEIVE. Filters
+ * the FAT array in-place.
+ */
 void InterrogateHandler(StatusCode *status)
 {
     if (*status != OPINTERROGATE)
@@ -155,6 +186,12 @@ void InterrogateHandler(StatusCode *status)
     stage.as.fat.numEntries = recvFiles;
 }
 
+/**
+ * @brief Execution flow for generating a Peer REPLY.
+ *
+ * Constructs a FAT table containing all valid files currently held by this
+ * HSM. Encrypts the table with the secure Interrogate key before transmission.
+ */
 void ReplyHandler(StatusCode *status)
 {
     if (*status != OPREPLY)
@@ -204,6 +241,13 @@ void ReplyHandler(StatusCode *status)
     }
 }
 
+/**
+ * @brief Execution flow for a Peer SEND operation.
+ *
+ * Prepares a file sequence for inter-HSM transfer. Loads the specific slot,
+ * re-encrypts the metadata (including the file tag and internal keys) using
+ * the inter-HSM SEND key for secure wire transport.
+ */
 void SendHandler(uint8_t slot, StatusCode *status)
 {
     if (*status != OPSEND)
@@ -241,6 +285,12 @@ void SendHandler(uint8_t slot, StatusCode *status)
     }
 }
 
+/**
+ * @brief Execution flow for a Peer RECEIVE operation.
+ *
+ * Decrypts the metadata of an incoming file transfer using the inter-HSM
+ * RECEIVE key. On success, commits the newly received file to flash.
+ */
 void ReceiveHandler(uint8_t slot, StatusCode *status)
 {
     if (*status != OPRECEIVE)
