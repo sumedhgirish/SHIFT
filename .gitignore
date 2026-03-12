@@ -18,3 +18,6 @@ pyrightconfig.json
 # documentation
 docs/html
 docs/latex
+
+#tests
+tests/
