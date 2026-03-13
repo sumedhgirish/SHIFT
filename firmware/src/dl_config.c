@@ -9,6 +9,7 @@
  */
 
 #include "dl_config.h"
+#include "common.h"
 #include "ti/devices/msp/m0p/mspm0l222x.h"
 #include "ti/driverlib/dl_gpio.h"
 #include "ti/driverlib/dl_trng.h"
@@ -215,10 +216,11 @@ static void TRNG_SecureWarmup(void)
         (void) DL_TRNG_getCapture(TRNG);
     }
 
-    if (DL_TRNG_isHealthTestFail(TRNG))
+    IF(DL_TRNG_isHealthTestFail(TRNG))
     {
         Default_Handler();
     }
+    ENDIF
 }
 
 /**

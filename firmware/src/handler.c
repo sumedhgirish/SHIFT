@@ -9,6 +9,7 @@
  */
 
 #include "handler.h"
+#include "common.h"
 #include "crypto_aead.h"
 #include "filesystem.h"
 #include "secrets.h"
@@ -18,8 +19,9 @@
 
 void ListHandler(StatusCode *status)
 {
-    if (*status != OPLIST)
-        return;
+    IF(*status != OPLIST)
+    return;
+    ENDIF
 
     uint32_t numEntries = 0;
     for (uint8_t i = 0; i < NUM_SLOTS; i++)
@@ -50,8 +52,9 @@ void ListHandler(StatusCode *status)
  */
 void ReadHandler(uint8_t slot, StatusCode *status)
 {
-    if (*status != OPREAD)
-        return;
+    IF(*status != OPREAD)
+    return;
+    ENDIF
 
     LoadFile(slot, status);
     if (*status != OPREAD)
@@ -61,7 +64,7 @@ void ReadHandler(uint8_t slot, StatusCode *status)
     *status = SelectReadKey(stage.as.file.metadata.groupid, derivedKey);
 
     int dstat;
-    if (*status == OPREAD)
+    IF(*status == OPREAD)
     {
         dstat = ascon_aead_decrypt(
             (uint8_t *) &stage.as.file.content,
@@ -77,12 +80,14 @@ void ReadHandler(uint8_t slot, StatusCode *status)
         memclear(derivedKey, ASCON_KEY_SIZE, 0);
         return;
     }
+    ENDIF
 
-    if (dstat != 0)
+    IF(dstat != 0)
     {
         *status = DECRYPTIONERROR;
         return;
     }
+    ENDIF
 }
 
 /**
@@ -94,14 +99,15 @@ void ReadHandler(uint8_t slot, StatusCode *status)
  */
 void WriteHandler(uint8_t slot, StatusCode *status)
 {
-    if (*status != OPWRITE)
-        return;
+    IF(*status != OPWRITE)
+    return;
+    ENDIF
 
     uint8_t derivedKey[ASCON_KEY_SIZE] = {0};
     *status = SelectWriteKey(stage.as.file.metadata.groupid, derivedKey);
 
     int estat;
-    if (*status == OPWRITE)
+    IF(*status == OPWRITE)
     {
         estat = ascon_aead_encrypt(
             (uint8_t *) &stage.as.file.metadata.tag,
@@ -117,12 +123,14 @@ void WriteHandler(uint8_t slot, StatusCode *status)
         memclear(derivedKey, ASCON_KEY_SIZE, 0);
         return;
     }
+    ENDIF
 
-    if (estat != 0)
+    IF(estat != 0)
     {
         *status = ENCRYPTIONERROR;
         return;
     }
+    ENDIF
 
     StoreFile(slot, status);
 }
@@ -131,8 +139,9 @@ static inline bool isReceivable(uint16_t groupid)
 {
     for (uint8_t i = 0; i < N_RECV_GROUPS; ++i)
     {
-        if (recv_groups[i] == groupid)
-            return true;
+        IF(recv_groups[i] == groupid)
+        return true;
+        ENDIF
     }
     return false;
 }
@@ -146,14 +155,15 @@ static inline bool isReceivable(uint16_t groupid)
  */
 void InterrogateHandler(StatusCode *status)
 {
-    if (*status != OPINTERROGATE)
-        return;
+    IF(*status != OPINTERROGATE)
+    return;
+    ENDIF
 
     uint8_t derivedKey[ASCON_KEY_SIZE] = {0};
     *status = SelectInterrogateKey(derivedKey);
 
     int dstat;
-    if (*status == OPINTERROGATE)
+    IF(*status == OPINTERROGATE)
     {
         dstat = ascon_aead_decrypt(
             (uint8_t *) &stage.as.fat, (uint8_t *) &stage.preamble.tag,
@@ -167,21 +177,24 @@ void InterrogateHandler(StatusCode *status)
         memclear(derivedKey, ASCON_KEY_SIZE, 0);
         return;
     }
+    ENDIF
 
-    if (dstat != 0)
+    IF(dstat != 0)
     {
         *status = DECRYPTIONERROR;
         return;
     }
+    ENDIF
 
     uint32_t recvFiles = 0;
     for (uint8_t i = 0; i < stage.as.fat.numEntries; ++i)
     {
-        if (isReceivable(stage.as.fat.slots[i].groupid))
+        IF(isReceivable(stage.as.fat.slots[i].groupid))
         {
             stage.as.fat.slots[recvFiles] = stage.as.fat.slots[i];
             recvFiles++;
         }
+        ENDIF
     }
     stage.as.fat.numEntries = recvFiles;
 }
@@ -194,15 +207,16 @@ void InterrogateHandler(StatusCode *status)
  */
 void ReplyHandler(StatusCode *status)
 {
-    if (*status != OPREPLY)
-        return;
+    IF(*status != OPREPLY)
+    return;
+    ENDIF
 
     uint32_t numEntries = 0;
     for (uint8_t i = 0; i < NUM_SLOTS; i++)
     {
-        if (Metadata_Table[i].status.magic == 0xdeadf00d &&
-            securecmp((uint8_t *) Metadata_Table[i].status.id,
-                      (uint8_t *) FAT_Table.entry[i].uuid, 16) == true)
+        IF(Metadata_Table[i].status.magic == 0xdeadf00d &&
+           securecmp((uint8_t *) Metadata_Table[i].status.id,
+                     (uint8_t *) FAT_Table.entry[i].uuid, 16) == true)
         {
             stage.as.fat.slots[numEntries].groupid =
                 Metadata_Table[i].data.groupid;
@@ -212,6 +226,7 @@ void ReplyHandler(StatusCode *status)
 
             numEntries++;
         }
+        ENDIF
     }
     stage.as.fat.numEntries = numEntries;
 
@@ -219,7 +234,7 @@ void ReplyHandler(StatusCode *status)
     *status = SelectReplyKey(derivedKey);
 
     int estat;
-    if (*status == OPREPLY)
+    IF(*status == OPREPLY)
     {
         estat = ascon_aead_encrypt(
             (uint8_t *) &stage.preamble.tag, (uint8_t *) &stage.as.fat,
@@ -233,12 +248,14 @@ void ReplyHandler(StatusCode *status)
         memclear(derivedKey, ASCON_KEY_SIZE, 0);
         return;
     }
+    ENDIF
 
-    if (estat != 0)
+    IF(estat != 0)
     {
         *status = ENCRYPTIONERROR;
         return;
     }
+    ENDIF
 }
 
 /**
@@ -250,18 +267,20 @@ void ReplyHandler(StatusCode *status)
  */
 void SendHandler(uint8_t slot, StatusCode *status)
 {
-    if (*status != OPSEND)
-        return;
+    IF(*status != OPSEND)
+    return;
+    ENDIF
 
     LoadFile(slot, status);
-    if (*status != OPSEND)
-        return;
+    IF(*status != OPSEND)
+    return;
+    ENDIF
 
     uint8_t derivedKey[ASCON_KEY_SIZE] = {0};
     *status = SelectSendKey(stage.as.file.metadata.groupid, derivedKey);
 
     int estat;
-    if (*status == OPSEND)
+    IF(*status == OPSEND)
     {
         estat = ascon_aead_encrypt(
             (uint8_t *) &stage.preamble.tag,
@@ -278,11 +297,14 @@ void SendHandler(uint8_t slot, StatusCode *status)
         memclear(derivedKey, ASCON_KEY_SIZE, 0);
         return;
     }
-    if (estat != 0)
+    ENDIF
+
+    IF(estat != 0)
     {
         *status = ENCRYPTIONERROR;
         return;
     }
+    ENDIF
 }
 
 /**
@@ -293,12 +315,14 @@ void SendHandler(uint8_t slot, StatusCode *status)
  */
 void ReceiveHandler(uint8_t slot, StatusCode *status)
 {
-    if (*status != OPRECEIVE)
-        return;
+    IF(*status != OPRECEIVE)
+    return;
+    ENDIF
+
     uint8_t derivedKey[ASCON_KEY_SIZE] = {0};
     *status = SelectRecvKey(stage.as.file.metadata.groupid, derivedKey);
     int dstat;
-    if (*status == OPRECEIVE)
+    IF(*status == OPRECEIVE)
     {
         dstat = ascon_aead_decrypt(
             (uint8_t *) &stage.as.file.metadata.key,
@@ -315,10 +339,14 @@ void ReceiveHandler(uint8_t slot, StatusCode *status)
         memclear(derivedKey, ASCON_KEY_SIZE, 0);
         return;
     }
-    if (dstat != 0)
+    ENDIF
+
+    IF(dstat != 0)
     {
         *status = DECRYPTIONERROR;
         return;
     }
+    ENDIF
+
     StoreFile(slot, status);
 }

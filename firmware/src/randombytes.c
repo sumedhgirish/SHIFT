@@ -9,6 +9,7 @@
  */
 
 #include "randombytes.h"
+#include "common.h"
 #include "ti/driverlib/dl_trng.h"
 
 /**
@@ -38,8 +39,10 @@ void randombytes(uint8_t *buf, uint64_t len)
     uint64_t genBytes = 0;
     while (genBytes < len)
     {
-        if (genBytes % 4 == 0)
-            *capture = getrandom32();
+        IF(genBytes % 4 == 0)
+        *capture = getrandom32();
+        ENDIF
+
         buf[genBytes] = capturebuf[genBytes % 4];
         genBytes++;
     }

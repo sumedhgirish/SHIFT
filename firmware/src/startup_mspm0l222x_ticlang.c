@@ -11,7 +11,6 @@
 #include "dl_config.h"
 #include "ti/driverlib/dl_gpio.h"
 #include <stdint.h>
-#include <ti/devices/msp/msp.h>
 
 /** @brief Top of the stack, defined in the linker command file. */
 extern unsigned long __STACK_END;
@@ -149,6 +148,49 @@ void (*const interruptVectors[])(void) =
         DMA_IRQHandler     /* DMA interrupt handler     */
     };
 
+static void MPU_Init(void)
+{
+    MPU->CTRL = 0;
+
+    /* Region 0: Flash executable baseline */
+    MPU->RNR = 0;
+    MPU->RBAR = 0x00000000;
+    MPU->RASR = (0 << MPU_RASR_XN_Pos) | (0x5 << MPU_RASR_AP_Pos) |
+                (16 << MPU_RASR_SIZE_Pos) | // 128 KB
+                (1 << MPU_RASR_ENABLE_Pos);
+
+    /* Region 1: Config/data NX override */
+    MPU->RNR = 1;
+    MPU->RBAR = 0x00018000;
+    MPU->RASR = (1 << MPU_RASR_XN_Pos) | (0x3 << MPU_RASR_AP_Pos) |
+                (14 << MPU_RASR_SIZE_Pos) | // 32 KB
+                (1 << MPU_RASR_ENABLE_Pos);
+
+    /* Region 2: Upper flash NX */
+    MPU->RNR = 2;
+    MPU->RBAR = 0x00020000;
+    MPU->RASR = (1 << MPU_RASR_XN_Pos) | (0x3 << MPU_RASR_AP_Pos) |
+                (16 << MPU_RASR_SIZE_Pos) | (1 << MPU_RASR_ENABLE_Pos);
+
+    /* Region 3: SRAM baseline */
+    MPU->RNR = 3;
+    MPU->RBAR = 0x20200000;
+    MPU->RASR = (1 << MPU_RASR_XN_Pos) | (0x3 << MPU_RASR_AP_Pos) |
+                (14 << MPU_RASR_SIZE_Pos) | (1 << MPU_RASR_ENABLE_Pos);
+
+    /* Region 4: SRAM_CODE executable */
+    MPU->RNR = 4;
+    MPU->RBAR = 0x20207000;
+    MPU->RASR = (0 << MPU_RASR_XN_Pos) | (0x3 << MPU_RASR_AP_Pos) |
+                (11 << MPU_RASR_SIZE_Pos) | // 4 KB
+                (1 << MPU_RASR_ENABLE_Pos);
+
+    MPU->CTRL = MPU_CTRL_ENABLE_Msk | MPU_CTRL_PRIVDEFENA_Msk;
+
+    __DSB();
+    __ISB();
+}
+
 /**
  * @brief Processor Reset Handler.
  *
@@ -160,6 +202,10 @@ void Reset_Handler(void)
 {
     /* Disable SWD immediately on boot to prevent debugger attachment */
     DL_SYSCTL_disableSWD();
+
+    /* Configure the Memory Protection Unit (MPU) to set up memory regions and
+     * access permissions. */
+    MPU_Init();
 
     /* Jump to the ticlang C Initialization Routine. */
     __asm("    .global _c_int00\n"

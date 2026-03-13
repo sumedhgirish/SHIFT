@@ -9,12 +9,14 @@
  */
 
 #include "filesystem.h"
+#include "common.h"
 #include "flash.h"
 #include "stubs.h"
 #include <assert.h>
 #include <string.h>
 
-/** @brief Staging area in SRAM for cryptographic ops before syncing to Flash. */
+/** @brief Staging area in SRAM for cryptographic ops before syncing to Flash.
+ */
 volatile FS_Stage stage;
 
 /** @brief File Allocation Table, mapped to fixed flash section. */
@@ -35,19 +37,21 @@ volatile const FS_SystemStatusFlash SystemStatus;
 
 void LoadFile(uint8_t slot, StatusCode *status)
 {
-    if (slot >= NUM_SLOTS)
+    IF(slot >= NUM_SLOTS)
     {
         *status = INVALIDSLOT;
         return;
     }
+    ENDIF
 
-    if (Metadata_Table[slot].status.magic != 0xdeadf00d ||
-        securecmp((uint8_t *) Metadata_Table[slot].status.id,
-                  (uint8_t *) FAT_Table.entry[slot].uuid, 16) == false)
+    IF(Metadata_Table[slot].status.magic != 0xdeadf00d ||
+       securecmp((uint8_t *) Metadata_Table[slot].status.id,
+                 (uint8_t *) FAT_Table.entry[slot].uuid, 16) == false)
     {
         *status = INVALIDSLOT;
         return;
     }
+    ENDIF
 
     memcpy((uint8_t *) &stage.as.file.entry, (uint8_t *) &FAT_Table.entry[slot],
            sizeof(FS_FileEntry));
@@ -61,11 +65,12 @@ void LoadFile(uint8_t slot, StatusCode *status)
 
 void StoreFile(uint8_t slot, StatusCode *status)
 {
-    if (slot >= NUM_SLOTS)
+    IF(slot >= NUM_SLOTS)
     {
         *status = INVALIDSLOT;
         return;
     }
+    ENDIF
 
     FLASH_Write((uint32_t) Filedata_Table.data[slot],
                 (uint8_t *) stage.as.file.content, MAX_FILE_SIZE, status);
@@ -81,6 +86,7 @@ void StoreFile(uint8_t slot, StatusCode *status)
 
     FLASH_Write((uint32_t) &FAT_Table.entry[slot],
                 (uint8_t *) &stage.as.file.entry, sizeof(FS_FileEntry), status);
-    if (*status == FLASHWRITEERROR || *status == FLASHERASEERROR)
-        return;
+    IF(*status == FLASHWRITEERROR || *status == FLASHERASEERROR)
+    return;
+    ENDIF
 }

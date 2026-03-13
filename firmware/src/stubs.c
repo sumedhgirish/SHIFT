@@ -9,6 +9,7 @@
 
 #include "stubs.h"
 #include "ascon.h"
+#include "common.h"
 #include "filesystem.h"
 #include "secrets.h"
 #include "ti/driverlib/dl_flashctl.h"
@@ -80,8 +81,9 @@ bool checkpin(uint8_t inputPin[6])
  */
 RAMFUNC void memclear(void *v, uint32_t n, uint8_t value)
 {
-    if (v == NULL || n == 0)
-        return;
+    IF(v == NULL || n == 0)
+    return;
+    ENDIF
 
     volatile uint8_t *p = (volatile uint8_t *) v;
 

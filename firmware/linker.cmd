@@ -13,7 +13,7 @@ MEMORY
      * Main Flash:        0x6000 - 0x3A000
      */
     BOOTLOADER  (RX) : origin = 0x00000000, length = 0x00006000
-    FLASH_CODE  (RX) : origin = 0x00006000, length = 0x00014000   /* 80 KB  */
+    FLASH_CODE  (RX) : origin = 0x00006000, length = 0x00010000   /* 64 KB  */
 
     SYSTEMCONF  (RW) : origin = 0x0001A000, length = 0x00000400   /*  1 KB  */
     METADATA    (RW) : origin = 0x0001A400, length = 0x00002000   /*  8 KB  */

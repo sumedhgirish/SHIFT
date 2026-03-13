@@ -10,6 +10,7 @@
  */
 
 #include "parser.h"
+#include "common.h"
 #include "filesystem.h"
 #include "handler.h"
 #include "randombytes.h"
@@ -29,11 +30,12 @@ void ListParser(StatusCode *status)
     uint8_t pin[6] = {0};
     UART_RecvBytes(UART_HOST, pin, 6, true);
 
-    if (!checkpin(pin))
+    IF(!checkpin(pin))
     {
         *status = PERMISSIONERROR;
         return;
     }
+    ENDIF
 
     ListHandler(status);
 }
@@ -49,17 +51,19 @@ void ReadParser(StatusCode *status)
     UART_RecvBytes(UART_HOST, pin, 6, false);
     UART_RecvBytes(UART_HOST, &readSlot, 1, true);
 
-    if (!checkpin(pin))
+    IF(!checkpin(pin))
     {
         *status = PERMISSIONERROR;
         return;
     }
+    ENDIF
 
-    if (readSlot >= NUM_SLOTS)
+    IF(readSlot >= NUM_SLOTS)
     {
         *status = INVALIDSLOT;
         return;
     }
+    ENDIF
 
     ReadHandler(readSlot, status);
 }
@@ -85,29 +89,32 @@ void WriteParser(StatusCode *status)
     UART_RecvBytes(UART_HOST, (uint8_t *) stage.as.file.entry.uuid, 16, false);
     UART_RecvBytes(UART_HOST, (uint8_t *) &filesize, 2, false);
 
-    if (!checkpin(pin))
+    IF(!checkpin(pin))
     {
         memclear((uint8_t *) &stage, sizeof(stage), 0);
         UART_RecvBytes(UART_HOST, NULL, filesize, true);
         *status = PERMISSIONERROR;
         return;
     }
+    ENDIF
 
-    if (writeSlot >= NUM_SLOTS)
+    IF(writeSlot >= NUM_SLOTS)
     {
         memclear((uint8_t *) &stage, sizeof(stage), 0);
         UART_RecvBytes(UART_HOST, NULL, filesize, true);
         *status = INVALIDSLOT;
         return;
     }
+    ENDIF
 
-    if (filesize > MAX_FILE_SIZE)
+    IF(filesize > MAX_FILE_SIZE)
     {
         memclear((uint8_t *) &stage, sizeof(stage), 0);
         UART_RecvBytes(UART_HOST, NULL, filesize, true);
         *status = INVALIDBODYSIZE;
         return;
     }
+    ENDIF
 
     UART_RecvBytes(UART_HOST, (uint8_t *) stage.as.file.content, filesize,
                    true);
@@ -152,11 +159,12 @@ void InterrogateParser(StatusCode *status)
     uint8_t pin[6] = {0};
     UART_RecvBytes(UART_HOST, pin, 6, true);
 
-    if (!checkpin(pin))
+    IF(!checkpin(pin))
     {
         *status = PERMISSIONERROR;
         return;
     }
+    ENDIF
 
     uint8_t opCode = OP_INTERROGATE;
     UART_SendBytes(UART_PEER, (uint8_t *) &peer_magic_byte, 1, false);
@@ -211,7 +219,8 @@ void InterrogateParser(StatusCode *status)
 }
 
 /**
- * @brief Parses an inbound Peer RECEIVE command, intercepting secure file transfers.
+ * @brief Parses an inbound Peer RECEIVE command, intercepting secure file
+ * transfers.
  *
  * Reads metadata and the encrypted file chunk from the peer link, syncing it
  * into the `stage` buffer before requesting handler decryption and storage.
@@ -226,17 +235,19 @@ void ReceiveParser(StatusCode *status)
     UART_RecvBytes(UART_HOST, &readSlot, 1, false);
     UART_RecvBytes(UART_HOST, &writeSlot, 1, true);
 
-    if (!checkpin(pin))
+    IF(!checkpin(pin))
     {
         *status = PERMISSIONERROR;
         return;
     }
+    ENDIF
 
-    if (readSlot >= NUM_SLOTS || writeSlot >= NUM_SLOTS)
+    IF(readSlot >= NUM_SLOTS || writeSlot >= NUM_SLOTS)
     {
         *status = INVALIDSLOT;
         return;
     }
+    ENDIF
 
     uint8_t opCode = OP_RECEIVE;
     UART_SendBytes(UART_PEER, (uint8_t *) &peer_magic_byte, 1, false);
@@ -294,7 +305,7 @@ static void ReplyParser(StatusCode *status)
     uint8_t opCode;
     uint16_t bodyLen;
 
-    if (*status != OPREPLY)
+    IF(*status != OPREPLY)
     {
         opCode = OP_ERROR;
         bodyLen = (uint16_t) (*status);
@@ -303,6 +314,7 @@ static void ReplyParser(StatusCode *status)
         UART_SendBytes(UART_PEER, (uint8_t *) &bodyLen, 2, true);
         return;
     }
+    ENDIF
 
     opCode = OP_INTERROGATE;
     UART_SendBytes(UART_PEER, (uint8_t *) &peer_magic_byte, 1, false);
@@ -326,18 +338,19 @@ static void SendParser(StatusCode *status)
     uint8_t readSlot;
     UART_RecvBytes(UART_PEER, &readSlot, 1, true);
 
-    if (readSlot >= NUM_SLOTS)
+    IF(readSlot >= NUM_SLOTS)
     {
         *status = INVALIDSLOT;
         return;
     }
+    ENDIF
 
     SendHandler(readSlot, status);
 
     uint8_t opCode;
     uint16_t bodyLen;
 
-    if (*status != OPSEND)
+    IF(*status != OPSEND)
     {
         opCode = OP_ERROR;
         bodyLen = (uint16_t) (*status);
@@ -346,6 +359,7 @@ static void SendParser(StatusCode *status)
         UART_SendBytes(UART_PEER, (uint8_t *) &bodyLen, 2, true);
         return;
     }
+    ENDIF
 
     opCode = OP_RECEIVE;
     UART_SendBytes(UART_PEER, (uint8_t *) &peer_magic_byte, 1, false);

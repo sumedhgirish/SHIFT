@@ -9,6 +9,7 @@
  * formulating and transmitting a serialized response frame.
  */
 
+#include "common.h"
 #include "dl_config.h"
 #include "filesystem.h"
 #include "flash.h"
@@ -133,6 +134,7 @@ static inline void ValidateBodySize(uint16_t bodyLen, StatusCode *status)
                 (bodyLen == LISTEN_METADATA_SIZE) ? (*status) : INVALIDBODYSIZE;
             break;
         default:
+            *status = INVALIDBODYSIZE;
             break;
     }
 }
@@ -199,7 +201,8 @@ static inline void SendHeader(uint8_t opCode, uint16_t bodyLen)
  * @brief Constructs and transmits the final output frame to the Host.
  *
  * Serializes data from the volatile `stage` into the UART TX buffer. It handles
- * successful payload transmissions as well as sending human-readable error messages.
+ * successful payload transmissions as well as sending human-readable error
+ * messages.
  *
  * @param status Final state of the request (success or specific error code).
  */
@@ -313,11 +316,12 @@ int main(void)
 
         HandleRequest(&status, bodyLen);
 
-        if (SystemStatus.timeout == 0)
+        IF(SystemStatus.timeout == 0)
         {
             delay_cycles((32000000 * 9) / 2);
             FLASH_Erase((uint32_t) &SystemStatus, &status);
         }
+        ENDIF
 
         SendResponse(&status);
     }
