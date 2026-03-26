@@ -1,24 +1,37 @@
-# SHIFT (Secure Hardware Interface for File Transfer)
+@mainpage Design
 
-Welcome to the **SHIFT** repository! This project implements an advanced, cryptographically verifiable append-only filesystem and Host Security Module (HSM) designed specifically for the **ECTF 2026** competition.
+# Introduction
 
-## Project Structure
+Welcome to the **SHIFT** repository! This project implements a cryptographically
+enforced permission-based embedded filesystem as a Hardware Security Module
+(HSM) designed specifically for the **ECTF 2026** competition.
 
-The project is divided into several key directories:
+The focus of this project is to ensure that no unauthorized operations can be
+performed on the stored file data via either hardware or software exploits. This
+assurance is gained by designing a system whose ability to perform any given
+action is a function of the cryptographic state of the data it is acting on.
 
-- **`firmware/`**: Contains the core C codebase for the MSPM0L2228 microcontroller. This is where the primary HSM logic, cryptographic handlers, and flash driver reside.
-  - **[`firmware/README.md`](firmware/README.md)**: Start here for an architectural overview of how the firmware operates, handles UART communications, and secures data in flash.
-- **`firmware/utils/`**: Contains the Python tooling required to derive and provision device-specific cryptographic identities (`derive_secrets.py`).
-  - **[`firmware/utils/README.md`](firmware/utils/README.md)**: Read this to understand how the asymmetric shared-secret derivation handles user permissions securely at build-time.
-- **`firmware/external/`**: Submodules containing third-party cryptographic primitives (`ascon`, `micro-ecc`).
+If any operation is cryptographically invalid, it is by extension also
+functionaly invalid. This reduces the problem of protecting all data on the
+HSM to simply protecting the cryptographic state of the hardware at the time
+of operation. The only way in which a valid operation can be performed is by
+rederiving the correct cryptographic state.
 
-## Documentation & API Reference
+This project is built to run on the `TI MSPM0L2228` microcontroller. It sports
+an `arm cortex m0+` cpu that runs at 32MHz with 32KB SRAM and 256KB flash. This
+severely limits the types and extent of protection we can apply via the choice
+of cryptographic algorithm, and the choices made seek to provide the maximum
+protection possible on the given hardware.
 
-We have heavily documented the internal C source code and Python utilities using a concise, Linux-kernel documentation style to explain the *how* and *why* behind the critical hardware security mechanisms.
+For more detailed information on specific components, see:
+
+- @subpage firmware_design "Firmware Design and Architecture"
+- @subpage key_generation "Key Generation"
 
 ### Generating the Doxygen Website
 
-To view the complete API reference, function call graphs, and structural definitions, you can generate the local HTML documentation site:
+To view the complete API reference, function call graphs, and structure
+definitions, you can generate the local HTML documentation site:
 
 1. Ensure you have [Doxygen](https://www.doxygen.nl/) installed on your machine.
 
@@ -51,9 +64,3 @@ If you have a LaTeX distribution (like `texlive`) installed:
    ```
 
 1. Open the generated `refman.pdf` document.
-
-### Authors
-
-1. Sumedh Girish
-2. Aditya Naskar
-3. Shriniketh Kana
