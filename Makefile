@@ -13,7 +13,7 @@ hsm1_firmware:
 
 hsm1: hsm1_firmware
 	ectf hw /dev/ttyACM0 erase
-	ectf hw /dev/ttyACM0 flash ./firmware/output/hsm.bin -n hsm1
+	ectf hw /dev/ttyACM0 flash ./build/hsm.bin -n hsm1
 	ectf hw /dev/ttyACM0 start
 
 hsm2_firmware:
@@ -21,6 +21,5 @@ hsm2_firmware:
 
 hsm2: hsm2_firmware
 	ectf hw /dev/ttyACM2 erase
-	ectf hw /dev/ttyACM2 flash ./firmware/output/hsm.bin -n hsm2
+	ectf hw /dev/ttyACM2 flash ./build/hsm.bin -n hsm2
 	ectf hw /dev/ttyACM2 start
-

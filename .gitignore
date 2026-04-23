@@ -1,4 +1,5 @@
 # firmware
+build/
 firmware/secrets
 firmware/build
 firmware/output
